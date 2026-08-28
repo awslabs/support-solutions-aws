@@ -1,4 +1,4 @@
-# FIS Recommender MCP Server
+# Guidance on Enhancing Resilience with DevOps Agent and Fault Injection Service
 
 An MCP (Model Context Protocol) server that automatically recommends AWS Fault Injection Simulator (FIS) experiments based on DevOps Agent findings. Helps teams quickly design chaos engineering experiments to validate system resilience.
 
