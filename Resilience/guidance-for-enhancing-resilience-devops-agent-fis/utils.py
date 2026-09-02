@@ -1,6 +1,5 @@
 # ============================================================
 # FILE_NAME: utils.py
-# AUTHOR: vsharmro
 # DATE: 2026-04-12
 # VERSION: 1.0
 # PURPOSE: Provides run_aws.
@@ -16,7 +15,6 @@ import subprocess
 # ============================================================
 # NAME: run_aws
 # TYPE: function
-# AUTHOR: vsharmro
 # DATE: 2026-04-12
 # PARAMETERS: args, region, capture, check
 # PURPOSE: Processes JSON data, with error handling.

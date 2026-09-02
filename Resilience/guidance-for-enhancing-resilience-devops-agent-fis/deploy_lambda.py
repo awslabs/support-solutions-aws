@@ -1,6 +1,5 @@
 # ============================================================
 # FILE_NAME: deploy_lambda.py
-# AUTHOR: vsharmro
 # DATE: 2026-04-11
 # VERSION: 1.0
 # PURPOSE: Prompts user for input config store., ensures iam role, builds package. uses config file echo
@@ -34,7 +33,6 @@ ZIP_FILE = "lambda_deployment.zip"
 # ============================================================
 # NAME: get_account_id
 # TYPE: function
-# AUTHOR: vsharmro
 # DATE: 2026-04-11 / 2026-04-12
 # PURPOSE: Exits on error, outputs to stdout.
 # CALLED BY: main
@@ -51,7 +49,6 @@ def get_account_id():
 # ============================================================
 # NAME: ensure_iam_role
 # TYPE: function
-# AUTHOR: vsharmro
 # DATE: 2026-04-11 / 2026-04-12
 # PARAMETERS: account_id
 # PURPOSE: Processes JSON data, outputs to stdout, using IAM, Lambda, SNS.
@@ -128,7 +125,6 @@ def ensure_iam_role(account_id):
 # ============================================================
 # NAME: build_package
 # TYPE: function
-# AUTHOR: vsharmro
 # DATE: 2026-04-11 / 2026-04-12
 # PURPOSE: Performs pattern matching, iterates with conditional logic, outputs to stdout, using Lambda.
 # CALLED BY: main
@@ -173,7 +169,6 @@ def build_package():
 # ============================================================
 # NAME: deploy_function
 # TYPE: function
-# AUTHOR: vsharmro
 # DATE: 2026-04-11 / 2026-04-12
 # PARAMETERS: role_arn, env_vars
 # PURPOSE: Processes JSON data, outputs to stdout, using Lambda.
@@ -229,7 +224,6 @@ def deploy_function(role_arn, env_vars):
 # ============================================================
 # NAME: main
 # TYPE: function
-# AUTHOR: vsharmro
 # DATE: 2026-04-11 / 2026-04-12
 # PURPOSE: Outputs to stdout.
 # CALLED BY: <module>

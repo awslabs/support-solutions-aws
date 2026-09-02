@@ -1,6 +1,5 @@
 # ============================================================
 # FILE_NAME: config_store.py
-# AUTHOR: vsharmro
 # DATE: 2026-04-11
 # VERSION: 1.0
 # PURPOSE: Provides load, save, get, prompt.
@@ -17,7 +16,6 @@ CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".fis_con
 # ============================================================
 # NAME: load
 # TYPE: function
-# AUTHOR: vsharmro
 # DATE: 2026-04-11 / 2026-04-12
 # PURPOSE: Reads file content, builds a collection from results.
 # CALLED BY: get, save
@@ -33,7 +31,6 @@ def load():
 # ============================================================
 # NAME: save
 # TYPE: function
-# AUTHOR: vsharmro
 # DATE: 2026-04-11 / 2026-04-12
 # PARAMETERS: updates
 # PURPOSE: Writes output to file.
@@ -51,7 +48,6 @@ def save(updates):
 # ============================================================
 # NAME: get
 # TYPE: function
-# AUTHOR: vsharmro
 # DATE: 2026-04-11 / 2026-04-12
 # PARAMETERS: key, default
 # PURPOSE: Computes and returns a result.
@@ -65,7 +61,6 @@ def get(key, default=""):
 # ============================================================
 # NAME: prompt
 # TYPE: function
-# AUTHOR: vsharmro
 # DATE: 2026-04-11 / 2026-04-12
 # PARAMETERS: label, key, default_override
 # PURPOSE: Prompts user for input.

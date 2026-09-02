@@ -1,6 +1,5 @@
 # ============================================================
 # FILE_NAME: setup_cognito_fis.py
-# AUTHOR: vsharmro
 # DATE: 2026-04-12
 # VERSION: 1.0
 # PURPOSE: Prompts user for input, processes sub.run, saves config store.. uses HTTP client, OAuth. connects to . connects
@@ -23,7 +22,6 @@ RS_IDENTIFIER = "default-fis-resource-server"
 # ============================================================
 # NAME: prompt
 # TYPE: function
-# AUTHOR: vsharmro
 # DATE: 2026-04-12
 # PARAMETERS: label, default
 # PURPOSE: Prompts user for input.
@@ -38,7 +36,6 @@ def prompt(label, default):
 # ============================================================
 # NAME: find_existing_pool
 # TYPE: function
-# AUTHOR: vsharmro
 # DATE: 2026-04-12
 # PARAMETERS: pool_name, region
 # PURPOSE: Iterates with conditional logic, using Cognito.
@@ -56,7 +53,6 @@ def find_existing_pool(pool_name, region):
 # ============================================================
 # NAME: find_existing_client
 # TYPE: function
-# AUTHOR: vsharmro
 # DATE: 2026-04-12
 # PARAMETERS: pool_id, client_name, region
 # PURPOSE: Iterates with conditional logic, using Cognito.
@@ -78,7 +74,6 @@ def find_existing_client(pool_id, client_name, region):
 # ============================================================
 # NAME: main
 # TYPE: function
-# AUTHOR: vsharmro
 # DATE: 2026-04-12
 # PURPOSE: Performs pattern matching, outputs to stdout.
 # CALLED BY: <module>

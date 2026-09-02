@@ -1,6 +1,5 @@
 # ============================================================
 # FILE_NAME: lambda_function.py
-# AUTHOR: vsharmro
 # DATE: 2026-04-11
 # VERSION: 1.0
 # PURPOSE: Provides public functions:get_bearer_token,
@@ -24,7 +23,6 @@ from mcp.client.streamable_http import streamablehttp_client
 # ============================================================
 # NAME: get_bearer_token
 # TYPE: function
-# AUTHOR: vsharmro
 # DATE: 2026-04-11
 # PURPOSE: Parses source code.
 # CALLED BY: call_mcp_tool
@@ -66,7 +64,6 @@ def get_bearer_token():
 # ============================================================
 # NAME: call_mcp_tool
 # TYPE: function
-# AUTHOR: vsharmro
 # DATE: 2026-04-11
 # PARAMETERS: tool_name, arguments
 # PURPOSE: Retrieves environment/system info.
@@ -92,7 +89,6 @@ async def call_mcp_tool(tool_name, arguments):
 # ============================================================
 # NAME: lambda_handler
 # TYPE: function
-# AUTHOR: vsharmro
 # DATE: 2026-04-11
 # PARAMETERS: event, context
 # PURPOSE: Processes JSON data, builds a collection from

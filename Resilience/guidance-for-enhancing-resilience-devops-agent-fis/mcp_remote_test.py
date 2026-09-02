@@ -1,6 +1,5 @@
 # ============================================================
 # FILE_NAME: mcp_remote_test.py
-# AUTHOR: vsharmro
 # DATE: 2026-04-12
 # VERSION: 1.0
 # PURPOSE: Syncs aio.run, prompts user for input config store., tests run. uses HTTP client, OAuth.
@@ -23,7 +22,6 @@ from mcp.client.streamable_http import streamablehttp_client
 # ============================================================
 # NAME: get_fis_token
 # TYPE: function
-# AUTHOR: vsharmro
 # DATE: 2026-04-12
 # PARAMETERS: client_id, client_secret, token_url, scope
 # PURPOSE: Parses source code, using OAuth.
@@ -50,7 +48,6 @@ def get_fis_token(client_id, client_secret, token_url, scope):
 # ============================================================
 # NAME: run_test
 # TYPE: function
-# AUTHOR: vsharmro
 # DATE: 2026-04-12
 # PARAMETERS: mcp_url, headers
 # PURPOSE: Iterates over items, outputs to stdout.
@@ -82,7 +79,6 @@ async def run_test(mcp_url, headers):
 # ============================================================
 # NAME: main
 # TYPE: function
-# AUTHOR: vsharmro
 # DATE: 2026-04-12
 # PURPOSE: Retrieves environment/system info, with error handling, outputs to stdout, using Bedrock, MCP server, OAuth.
 # CALLED BY: <module>

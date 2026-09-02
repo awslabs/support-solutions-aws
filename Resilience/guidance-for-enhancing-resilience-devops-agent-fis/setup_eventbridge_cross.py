@@ -1,6 +1,5 @@
 # ============================================================
 # FILE_NAME: setup_eventbridge_cross.py
-# AUTHOR: vsharmro
 # DATE: 2026-04-12
 # VERSION: 1.0
 # PURPOSE: Prompts user for input config store., ensures sns topic, Create Lambda execution role if it doesn't exist.
@@ -26,7 +25,6 @@ ROLE_NAME = "DevOpsAgentFISRecommenderRole"
 # ============================================================
 # NAME: get_account_id
 # TYPE: function
-# AUTHOR: vsharmro
 # DATE: 2026-04-12
 # PURPOSE: Exits on error, outputs to stdout.
 # CALLED BY: main
@@ -43,7 +41,6 @@ def get_account_id():
 # ============================================================
 # NAME: ensure_sns_topic
 # TYPE: function
-# AUTHOR: vsharmro
 # DATE: 2026-04-12
 # PARAMETERS: account_id
 # PURPOSE: Computes and returns a result, outputs to stdout, using SNS.
@@ -68,7 +65,6 @@ def ensure_sns_topic(account_id):
 # ============================================================
 # NAME: ensure_iam_role
 # TYPE: function
-# AUTHOR: vsharmro
 # DATE: 2026-04-12
 # PARAMETERS: account_id
 # PURPOSE: Create Lambda execution role if it doesn't exist.
@@ -132,7 +128,6 @@ def ensure_iam_role(account_id):
 # ============================================================
 # NAME: ensure_eventbridge_rule
 # TYPE: function
-# AUTHOR: vsharmro
 # DATE: 2026-04-12
 # PARAMETERS: account_id
 # PURPOSE: Create EventBridge rule for DevOps Agent events.
@@ -174,7 +169,6 @@ def get_lambda_code_path():
 # ============================================================
 # NAME: main
 # TYPE: function
-# AUTHOR: vsharmro
 # DATE: 2026-04-12
 # PURPOSE: Writes output to file, outputs to stdout.
 # CALLED BY: <module>

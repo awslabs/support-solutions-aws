@@ -1,6 +1,5 @@
 # ============================================================
 # FILE_NAME: cleanup.py
-# AUTHOR: vsharmro
 # DATE: 2026-04-11
 # VERSION: 1.0
 # PURPOSE: Provides public functions:cleanup_agentcore,
@@ -24,7 +23,6 @@ REGION = "us-east-1"
 # ============================================================
 # NAME: cleanup_agentcore
 # TYPE: function
-# AUTHOR: vsharmro
 # DATE: 2026-04-11
 # PURPOSE: Reads file content, iterates with conditional
 #   logic, outputs to stdout.
@@ -75,7 +73,6 @@ def cleanup_agentcore():
 # ============================================================
 # NAME: cleanup_cognito
 # TYPE: function
-# AUTHOR: vsharmro
 # DATE: 2026-04-11
 # PURPOSE: Builds a collection from results, iterates with
 #   conditional logic, outputs to stdout.
@@ -138,7 +135,6 @@ def cleanup_cognito():
 # ============================================================
 # NAME: cleanup_lambda
 # TYPE: function
-# AUTHOR: vsharmro
 # DATE: 2026-04-11
 # PURPOSE: Outputs to stdout.
 # CALLED BY: <module>
@@ -176,7 +172,6 @@ def cleanup_lambda():
 # ============================================================
 # NAME: cleanup_config_files
 # TYPE: function
-# AUTHOR: vsharmro
 # DATE: 2026-04-11
 # PURPOSE: Iterates with conditional logic, outputs to stdout.
 # CALLED BY: <module>

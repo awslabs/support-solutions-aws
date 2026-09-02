@@ -1,6 +1,5 @@
 # ============================================================
 # FILE_NAME: show_registration_values.py
-# AUTHOR: vsharmro
 # DATE: 2026-04-12
 # VERSION: 1.0
 # PURPOSE: Loads agentcore config, saves config store.. uses HTTP client. connects to . connects to .
@@ -27,7 +26,6 @@ CONFIG_FILE = ".bedrock_agentcore.yaml"
 # ============================================================
 # NAME: load_agentcore_config
 # TYPE: function
-# AUTHOR: vsharmro
 # DATE: 2026-04-12
 # PURPOSE: Reads file content, iterates with conditional logic, exits on error, outputs to stdout, using Bedrock.
 # CALLED BY: main
@@ -65,7 +63,6 @@ def load_agentcore_config():
 # ============================================================
 # NAME: find_cognito_pool
 # TYPE: function
-# AUTHOR: vsharmro
 # DATE: 2026-04-12
 # PARAMETERS: pool_name, region
 # PURPOSE: Iterates with conditional logic, using Cognito.
@@ -84,7 +81,6 @@ def find_cognito_pool(pool_name, region):
 # ============================================================
 # NAME: find_cognito_client
 # TYPE: function
-# AUTHOR: vsharmro
 # DATE: 2026-04-12
 # PARAMETERS: pool_id, client_name, region
 # PURPOSE: Iterates with conditional logic, using Cognito.
@@ -106,7 +102,6 @@ def find_cognito_client(pool_id, client_name, region):
 # ============================================================
 # NAME: get_cognito_domain
 # TYPE: function
-# AUTHOR: vsharmro
 # DATE: 2026-04-12
 # PARAMETERS: pool_id, region
 # PURPOSE: Computes and returns a result, using Cognito.
@@ -126,7 +121,6 @@ def get_cognito_domain(pool_id, region):
 # ============================================================
 # NAME: main
 # TYPE: function
-# AUTHOR: vsharmro
 # DATE: 2026-04-12
 # PURPOSE: Iterates with conditional logic, exits on error, outputs to stdout.
 # CALLED BY: <module>

@@ -77,7 +77,7 @@ aws lambda invoke --function-name fis-recommender-mcp-client --region {REGION} \
 ### Clone the Repository
 
 ```bash
-git clone https://github.com/pimisael/fis-recommender-mcp.git
+git clone https://github.com/<REPO_OWNER>/fis-recommender-mcp.git
 cd fis-recommender-mcp
 chmod +x server.py
 ```
@@ -511,4 +511,4 @@ MIT
 
 ## Contributing
 
-Issues and pull requests welcome at https://github.com/pimisael/fis-recommender-mcp
+Issues and pull requests welcome at https://github.com/<REPO_OWNER>/fis-recommender-mcp

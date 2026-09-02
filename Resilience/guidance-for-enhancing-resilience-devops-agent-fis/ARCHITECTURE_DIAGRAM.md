@@ -23,7 +23,7 @@
 ┌──────────────────────────────────────────────────────────────────┐
 │         Bedrock AgentCore Runtime (us-east-1)                    │
 │  ARN: arn:aws:bedrock-agentcore:us-east-1:<ACCOUNT_ID>:         │
-│       runtime/fisRecommender2-FrGh02GmrK                         │
+│       runtime/<AGENT_RUNTIME_NAME>                         │
 │                                                                  │
 │  ┌────────────────────────────────────────────────────────┐     │
 │  │              MCP Server (server.py)                    │     │

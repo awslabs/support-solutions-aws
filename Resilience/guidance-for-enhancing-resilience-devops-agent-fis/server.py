@@ -11,7 +11,7 @@ else:
     SERVER_HOST = os.environ.get("MCP_HOST", "127.0.0.1")
 
 # AgentCore direct_code_deploy routes traffic through an internal proxy that sets
-# a non-standard Host header (e.g., cell01.us-west-2.prod.arp.kepler-analytics.aws.dev).
+# a non-standard Host header (e.g., an internal AgentCore proxy hostname).
 # Uvicorn rejects these by default. This setting is safe because the runtime is not
 # directly internet-facing — all traffic passes through AgentCore's authenticated gateway.
 os.environ.setdefault("UVICORN_FORWARDED_ALLOW_IPS", "*")

@@ -9,7 +9,7 @@
 
 ### MCP Server Details
 - **Name**: FIS Recommender
-- **Endpoint**: `https://bedrock-agentcore.us-east-1.amazonaws.com/runtimes/arn%3Aaws%3Abedrock-agentcore%3Aus-east-1%3A<ACCOUNT_ID>%3Aruntime%2FfisRecommender2-FrGh02GmrK/invocations`
+- **Endpoint**: `https://bedrock-agentcore.us-east-1.amazonaws.com/runtimes/arn%3Aaws%3Abedrock-agentcore%3Aus-east-1%3A<ACCOUNT_ID>%3Aruntime%2F<AGENT_RUNTIME_NAME>/invocations`
 - **Protocol**: MCP over Streamable HTTP
 
 ### OAuth Configuration
@@ -91,7 +91,7 @@ Input: {"finding": {"summary": "network latency"}}
 
 ### Manual Test
 ```bash
-export AGENT_ARN="arn:aws:bedrock-agentcore:us-east-1:<ACCOUNT_ID>:runtime/fisRecommender2-FrGh02GmrK"
+export AGENT_ARN="arn:aws:bedrock-agentcore:us-east-1:<ACCOUNT_ID>:runtime/<AGENT_RUNTIME_NAME>"
 export BEARER_TOKEN="<from-cognito>"
 python3 mcp_remote_test.py
 ```
