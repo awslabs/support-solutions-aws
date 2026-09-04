@@ -1,3 +1,5 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
 # ============================================================
 # FILE_NAME: utils.py
 # DATE: 2026-04-12

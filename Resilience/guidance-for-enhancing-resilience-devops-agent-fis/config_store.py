@@ -1,3 +1,5 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
 # ============================================================
 # FILE_NAME: config_store.py
 # DATE: 2026-04-11

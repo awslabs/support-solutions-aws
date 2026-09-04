@@ -1,3 +1,5 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
 """
 Security integration tests for FIS Recommender MCP Server.
 Run: python -m pytest test_security.py -v
