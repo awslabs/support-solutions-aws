@@ -1,0 +1,40 @@
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv
+*.log
+.DS_Store
+*.swp
+.env
+
+# Lambda
+lambda_package/
+lambda_deployment.zip
+response.json
+
+# Local config files with credentials
+*.local.sh
+*.local.md
+.fis_config.json
+
+# AgentCore
+.bedrock_agentcore.yaml
+.bedrock_agentcore/
+
+# IDE
+.idea/
+
+# Sensitive files
+*.pem
+*.key
+trust-policy.json
+bedrock-policy.json
+payload.json
+pre-cr
+
+# CSE security scanner artifacts (auto-added by cse init)
+.security-scan/
