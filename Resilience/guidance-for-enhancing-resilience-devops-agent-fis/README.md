@@ -511,4 +511,4 @@ MIT
 
 ## Contributing
 
-Issues and pull requests welcome at https://github.com/<REPO_OWNER>/fis-recommender-mcp
+Issues and pull requests welcome at https://github.com/Resilience/guidance-for-enhancing-resilience-devops-agent-fis
