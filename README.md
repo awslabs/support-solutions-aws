@@ -1,4 +1,4 @@
-# aws-support-solutions
+# support-solutions-aws
 
 A collection of curated solutions created by AWS Support. Each solution addresses a
 specific customer problem that AWS Support engineers encounter in the field, and lives
