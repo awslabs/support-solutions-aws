@@ -1,4 +1,4 @@
-# Contributing to aws-support-solutions
+# Contributing to support-solutions-aws
 
 Thank you for your interest in contributing. This repository is a curated collection of
 solutions created by AWS Support to help customers diagnose, troubleshoot, and operate
