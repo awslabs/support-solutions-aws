@@ -1,0 +1,405 @@
+{
+  "account_id": "987654321098",
+  "region": "us-east-1",
+  "description": "Multi-agent system in production (80% ready). Has AgentCore runtimes, good observability, but missing some governance.",
+  "bedrock": {
+    "invocation_logging": {
+      "loggingConfig": {
+        "cloudWatchConfig": {
+          "logGroupName": "/aws/bedrock/model-invocations"
+        },
+        "s3Config": {
+          "bucketName": "company-bedrock-logs-prod"
+        }
+      }
+    },
+    "guardrails": [
+      {
+        "id": "gr-abc123",
+        "name": "ProductionGuardrail",
+        "status": "READY",
+        "version": "2"
+      },
+      {
+        "id": "gr-def456",
+        "name": "AgentSafetyGuardrail",
+        "status": "READY",
+        "version": "1"
+      }
+    ],
+    "custom_models": [],
+    "foundation_models": [
+      {
+        "modelId": "anthropic.claude-3-5-sonnet-20241022-v2:0",
+        "modelName": "Claude 3.5 Sonnet"
+      },
+      {
+        "modelId": "anthropic.claude-3-haiku-20240307-v1:0",
+        "modelName": "Claude 3 Haiku"
+      },
+      {
+        "modelId": "amazon.nova-pro-v1:0",
+        "modelName": "Nova Pro"
+      }
+    ],
+    "knowledge_bases": [
+      {
+        "knowledgeBaseId": "kb-prod001",
+        "name": "ComplianceDocs",
+        "status": "ACTIVE"
+      }
+    ],
+    "provisioned_throughputs": [
+      {
+        "provisionedModelId": "pt-sonnet-prod",
+        "modelArn": "arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-3-5-sonnet-20241022-v2:0",
+        "status": "InService"
+      }
+    ],
+    "inference_profiles": [
+      {
+        "inferenceProfileId": "ip-multiregion",
+        "models": [
+          {
+            "modelArn": "arn1"
+          },
+          {
+            "modelArn": "arn2"
+          }
+        ]
+      }
+    ],
+    "evaluation_jobs": [
+      {
+        "jobName": "monthly-eval-july",
+        "status": "Completed"
+      }
+    ],
+    "flows": [],
+    "imported_models": [],
+    "batch_inference_jobs": [
+      {
+        "jobArn": "arn:aws:bedrock:us-east-1:987654321098:model-invocation-job/batch-001",
+        "status": "Completed"
+      }
+    ],
+    "data_retention": {
+      "mode": "none"
+    },
+    "guardrail_details": [
+      {
+        "guardrailId": "gr-abc123",
+        "name": "ProductionGuardrail",
+        "status": "READY",
+        "version": "2",
+        "kmsKeyArn": "arn:aws:kms:us-east-1:987654321098:key/prod-guardrail-key",
+        "topicPolicy": {
+          "topics": [
+            {
+              "name": "competitor-mentions"
+            }
+          ]
+        },
+        "sensitiveInformationPolicy": {
+          "piiEntities": [
+            {
+              "type": "EMAIL"
+            },
+            {
+              "type": "PHONE"
+            }
+          ]
+        }
+      },
+      {
+        "guardrailId": "gr-def456",
+        "name": "AgentSafetyGuardrail",
+        "status": "READY",
+        "version": "1",
+        "topicPolicy": {
+          "topics": []
+        },
+        "sensitiveInformationPolicy": {}
+      }
+    ],
+    "enforced_guardrails": []
+  },
+  "agentcore": {
+    "runtimes": [
+      {
+        "agentRuntimeId": "rt-claims-triage",
+        "agentRuntimeName": "claims-triage-agent",
+        "status": "ACTIVE"
+      },
+      {
+        "agentRuntimeId": "rt-decision",
+        "agentRuntimeName": "decision-agent",
+        "status": "ACTIVE"
+      },
+      {
+        "agentRuntimeId": "rt-doc-extract",
+        "agentRuntimeName": "doc-extraction-agent",
+        "status": "ACTIVE"
+      }
+    ],
+    "gateways": [
+      {
+        "gatewayId": "gw-prod-001",
+        "name": "production-gateway",
+        "status": "ACTIVE"
+      }
+    ],
+    "memories": [
+      {
+        "memoryId": "mem-claims",
+        "name": "claims-session-memory"
+      }
+    ],
+    "policies": [],
+    "workload_identities": [
+      {
+        "workloadIdentityId": "wi-claims",
+        "name": "claims-triage-identity"
+      }
+    ]
+  },
+  "cloudwatch": {
+    "alarms": [
+      {
+        "AlarmName": "Bedrock-Error-Rate-High",
+        "Namespace": "AWS/Bedrock",
+        "MetricName": "InvocationServerErrors",
+        "Dimensions": [
+          {
+            "Name": "ModelId",
+            "Value": "anthropic.claude-3-5-sonnet-20241022-v2:0"
+          }
+        ]
+      },
+      {
+        "AlarmName": "Bedrock-Throttle-Alert",
+        "Namespace": "AWS/Bedrock",
+        "MetricName": "InvocationThrottles",
+        "Dimensions": []
+      },
+      {
+        "AlarmName": "Bedrock-Latency-P99",
+        "Namespace": "AWS/Bedrock",
+        "MetricName": "InvocationLatency",
+        "Dimensions": [
+          {
+            "Name": "ModelId",
+            "Value": "anthropic.claude-3-5-sonnet-20241022-v2:0"
+          }
+        ]
+      },
+      {
+        "AlarmName": "Bedrock-Token-Cost-Daily",
+        "Namespace": "AWS/Bedrock",
+        "MetricName": "InputTokenCount",
+        "Dimensions": []
+      },
+      {
+        "AlarmName": "AgentCore-Session-Errors",
+        "Namespace": "bedrock-agentcore",
+        "MetricName": "SessionErrors",
+        "Dimensions": []
+      }
+    ],
+    "dashboards": [
+      {
+        "DashboardName": "Bedrock-GenAI-Operations"
+      },
+      {
+        "DashboardName": "AgentCore-Production-Metrics"
+      }
+    ],
+    "bedrock_log_groups": [
+      {
+        "logGroupName": "/aws/bedrock/model-invocations",
+        "kmsKeyId": "arn:aws:kms:us-east-1:987654321098:key/log-encryption-key"
+      },
+      {
+        "logGroupName": "/aws/bedrock/guardrail-logs",
+        "kmsKeyId": "arn:aws:kms:us-east-1:987654321098:key/log-encryption-key"
+      }
+    ],
+    "agentcore_log_groups": [
+      {
+        "logGroupName": "/aws/bedrock-agentcore/sessions"
+      },
+      {
+        "logGroupName": "/aws/bedrock-agentcore/traces"
+      }
+    ]
+  },
+  "iam": {
+    "bedrock_roles": [
+      {
+        "RoleName": "AgentCore-ClaimsTriage-Role",
+        "PolicyName": "BedrockInvokeScoped",
+        "Arn": "arn:aws:iam::987654321098:role/AgentCore-ClaimsTriage-Role"
+      },
+      {
+        "RoleName": "AgentCore-Decision-Role",
+        "PolicyName": "BedrockInvokeScoped",
+        "Arn": "arn:aws:iam::987654321098:role/AgentCore-Decision-Role"
+      }
+    ],
+    "bedrock_role_policy_documents": [
+      {
+        "role": "AgentCore-ClaimsTriage-Role",
+        "arn": "arn:aws:iam::987654321098:role/AgentCore-ClaimsTriage-Role",
+        "policy": "BedrockInvokeScoped",
+        "type": "attached",
+        "wildcards": false
+      },
+      {
+        "role": "AgentCore-Decision-Role",
+        "arn": "arn:aws:iam::987654321098:role/AgentCore-Decision-Role",
+        "policy": "BedrockInvokeScoped",
+        "type": "attached",
+        "wildcards": false
+      }
+    ],
+    "bedrock_role_trust_info": [
+      {
+        "RoleName": "AgentCore-ClaimsTriage-Role",
+        "Arn": "arn:aws:iam::987654321098:role/AgentCore-ClaimsTriage-Role",
+        "TrustedServices": [
+          "bedrock-agentcore.amazonaws.com"
+        ],
+        "TrustPrincipalWildcard": false
+      },
+      {
+        "RoleName": "AgentCore-Decision-Role",
+        "Arn": "arn:aws:iam::987654321098:role/AgentCore-Decision-Role",
+        "TrustedServices": [
+          "bedrock-agentcore.amazonaws.com"
+        ],
+        "TrustPrincipalWildcard": false
+      }
+    ]
+  },
+  "vpc": {
+    "bedrock_endpoints": [
+      {
+        "VpcEndpointId": "vpce-0abc123def456",
+        "ServiceName": "com.amazonaws.us-east-1.bedrock-runtime",
+        "State": "available",
+        "PolicyDocument": "{\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"AWS\":\"arn:aws:iam::987654321098:root\"},\"Action\":\"bedrock:InvokeModel\",\"Resource\":\"arn:aws:bedrock:us-east-1::foundation-model/anthropic.*\"}]}"
+      }
+    ]
+  },
+  "cloudtrail": {
+    "trails": [
+      {
+        "Name": "prod-audit-trail",
+        "TrailARN": "arn:aws:cloudtrail:us-east-1:987654321098:trail/prod-audit-trail",
+        "IsMultiRegionTrail": true,
+        "_status": {
+          "IsLogging": true
+        }
+      }
+    ],
+    "trail_details": [
+      {
+        "Name": "prod-audit-trail",
+        "TrailARN": "arn:aws:cloudtrail:us-east-1:987654321098:trail/prod-audit-trail",
+        "IsMultiRegionTrail": true,
+        "IsLogging": true,
+        "EventSelectors": [],
+        "AdvancedEventSelectors": [
+          {
+            "Name": "BedrockDataEvents",
+            "FieldSelectors": [
+              {
+                "Field": "eventCategory",
+                "Equals": [
+                  "Data"
+                ]
+              },
+              {
+                "Field": "resources.type",
+                "Equals": [
+                  "AWS::Bedrock::Guardrail"
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "xray": {
+    "trace_destination": {
+      "Destination": "CloudWatchLogs"
+    }
+  },
+  "quotas": {
+    "service_quotas": [
+      {
+        "QuotaName": "InvokeModel requests per minute",
+        "Value": 1000
+      },
+      {
+        "QuotaName": "InvokeModel tokens per minute (input)",
+        "Value": 500000
+      }
+    ],
+    "change_history": [
+      {
+        "QuotaName": "InvokeModel requests per minute",
+        "DesiredValue": 1000,
+        "Status": "APPROVED"
+      }
+    ]
+  },
+  "cost": {
+    "bedrock_cost_and_usage": {
+      "ResultsByTime": [
+        {
+          "Total": {
+            "UnblendedCost": {
+              "Amount": "2000.00"
+            }
+          }
+        },
+        {
+          "Total": {
+            "UnblendedCost": {
+              "Amount": "2100.00"
+            }
+          }
+        },
+        {
+          "Total": {
+            "UnblendedCost": {
+              "Amount": "2200.00"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "s3": {
+    "logging_destination_security": {
+      "BucketName": "company-bedrock-logs-prod",
+      "EncryptionRules": [
+        {
+          "ApplyServerSideEncryptionByDefault": {
+            "SSEAlgorithm": "aws:kms"
+          }
+        }
+      ],
+      "EncryptionError": null,
+      "PublicAccessBlock": {
+        "BlockPublicAcls": true,
+        "IgnorePublicAcls": true,
+        "BlockPublicPolicy": true,
+        "RestrictPublicBuckets": true
+      },
+      "PublicAccessBlockError": null
+    }
+  }
+}

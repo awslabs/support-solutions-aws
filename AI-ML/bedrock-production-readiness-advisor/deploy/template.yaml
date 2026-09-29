@@ -1,0 +1,239 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  Bedrock Readiness (readiness-only) -- AgentCore Runtime deployment.
+  Covers 8 pillars including Security, Guardrails, and Data Governance.
+  Every granted action is read-only (Describe/List/Get) -- there is no
+  Put/Create/Update/Delete permission anywhere in this template, including
+  for the IAM-policy and CloudTrail reads the Security pillar needs, or the
+  Zero Data Retention read the Data Governance pillar needs. This role can
+  read the CONTENTS of a policy document attached to a Bedrock-trusted role
+  (to check for wildcard grants) and the account's data-retention mode, but
+  cannot change either, and no check in this codebase produces a corrected
+  policy, guardrail configuration, or other artifact meant to be deployed --
+  see IAMPolicyReadOnly and BedrockGuardrailsAndRetentionReadOnly below.
+  Note: the MCP server delivery channel does NOT need this stack. It runs
+  locally over stdio in the builder's editor and uses their own credentials.
+  Sample content -- not for production use without additional security testing.
+
+Parameters:
+  AgentName:
+    Type: String
+    Default: bedrock-readiness-only-agent
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+  SubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+  SecurityGroupId:
+    Type: AWS::EC2::SecurityGroup::Id
+  DiagramS3BucketName:
+    Type: String
+    Default: ""
+    Description: >
+      Optional. Bucket holding architecture diagrams for the diagram-review
+      feature. Leave empty (the default) to grant no S3 access at all. When
+      set, the agent is granted s3:GetObject on this bucket/prefix only --
+      never PutObject, DeleteObject, or ListBucket.
+  DiagramS3Prefix:
+    Type: String
+    Default: "diagrams/"
+    Description: >
+      Key prefix within DiagramS3BucketName that diagrams are read from.
+      Narrow this as far as possible; it scopes the s3:GetObject grant.
+
+Conditions:
+  # No S3 permission is attached unless a bucket is explicitly named.
+  HasDiagramBucket: !Not [!Equals [!Ref DiagramS3BucketName, ""]]
+
+Resources:
+  AgentExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AgentName}-execution-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: bedrock-agentcore.amazonaws.com
+            Action: sts:AssumeRole
+            # Confused-deputy prevention: restricts which AgentCore runtime can
+            # assume this role to one belonging to this account, invoked via
+            # a bedrock-agentcore resource in this account/region -- not any
+            # AgentCore runtime in any account that happens to use this
+            # service principal.
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+              ArnLike:
+                aws:SourceArn: !Sub "arn:${AWS::Partition}:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:*"
+      ManagedPolicyArns: !If
+        - HasDiagramBucket
+        - [!Ref AgentReadOnlyPolicy, !Ref DiagramReadOnlyPolicy]
+        - [!Ref AgentReadOnlyPolicy]
+
+  AgentReadOnlyPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: !Sub "${AgentName}-read-only-policy"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: BedrockReadOnly
+            Effect: Allow
+            Action:
+              - bedrock:List*
+              - bedrock:GetModelInvocationLoggingConfiguration
+            Resource: "*"
+          - Sid: BedrockAgentReadOnly
+            Effect: Allow
+            Action:
+              - bedrock-agent:ListKnowledgeBases
+              - bedrock-agent:ListFlows
+            Resource: "*"
+          - Sid: BedrockAgentCoreReadOnly
+            Effect: Allow
+            Action:
+              - bedrock-agentcore-control:List*
+            Resource: "*"
+          - Sid: CloudWatchReadOnly
+            Effect: Allow
+            Action:
+              - cloudwatch:GetMetricData
+              - cloudwatch:GetMetricStatistics
+              - cloudwatch:ListMetrics
+              - cloudwatch:DescribeAlarms
+              - cloudwatch:ListDashboards
+            Resource: "*"
+          - Sid: LogsReadOnly
+            Effect: Allow
+            Action:
+              - logs:DescribeLogGroups
+            Resource: "*"
+          - Sid: EC2ReadOnly
+            Effect: Allow
+            Action:
+              - ec2:DescribeVpcEndpoints
+            Resource: "*"
+          - Sid: ServiceQuotasReadOnly
+            Effect: Allow
+            Action:
+              - servicequotas:ListServiceQuotas
+              - servicequotas:ListRequestedServiceQuotaChangeHistoryByQuota
+            Resource: "*"
+          - Sid: CostExplorerReadOnly
+            Effect: Allow
+            Action:
+              - ce:GetCostAndUsage
+            Resource: "*"
+          - Sid: XRayReadOnly
+            Effect: Allow
+            Action:
+              - xray:GetTraceSegmentDestination
+            Resource: "*"
+          - Sid: IAMPolicyReadOnly
+            Effect: Allow
+            Action:
+              # Read-only, including policy document CONTENTS -- Get*/List* only,
+              # never Put/Create/Attach/Detach. The Security pillar (SEC-01..03)
+              # reads these only for roles it has already identified as trusted
+              # by a Bedrock service principal (from AssumeRolePolicyDocument,
+              # itself returned for free by ListRoles) -- never for every role
+              # or every policy in the account.
+              - iam:ListRoles
+              - iam:ListAttachedRolePolicies
+              - iam:ListRolePolicies
+              - iam:GetRolePolicy
+              - iam:GetPolicy
+              - iam:GetPolicyVersion
+            Resource: "*"
+          - Sid: CloudTrailReadOnly
+            Effect: Allow
+            Action:
+              # Existence, logging status, and event-selector configuration --
+              # read-only. SEC-04 uses these to confirm a trail exists, is
+              # actively logging, and whether it covers Bedrock data events.
+              - cloudtrail:DescribeTrails
+              - cloudtrail:GetTrailStatus
+              - cloudtrail:GetEventSelectors
+            Resource: "*"
+          - Sid: BedrockGuardrailsAndRetentionReadOnly
+            Effect: Allow
+            Action:
+              # bedrock:List* above already covers ListGuardrails; these three
+              # Get/List calls are added explicitly since they are not List*.
+              # GetAccountDataRetention takes no input and cannot be scoped by
+              # resource. Guardrails and Data Governance pillars only.
+              - bedrock:GetGuardrail
+              - bedrock:ListEnforcedGuardrailsConfiguration
+              - bedrock:GetAccountDataRetention
+            Resource: "*"
+          - Sid: LoggingDestinationSecurityReadOnly
+            Effect: Allow
+            Action:
+              # Read-only CONFIGURATION metadata (encryption default,
+              # public-access-block settings) about the ONE S3 bucket this
+              # account has configured, if any, as its Bedrock
+              # invocation-logging destination -- never object contents, and
+              # unrelated to DiagramReadOnlyPolicy below (a different bucket,
+              # for a different purpose). The bucket name is discovered at
+              # runtime from Bedrock's own logging configuration, not a
+              # template parameter, so this cannot be scoped to a specific
+              # bucket ARN here.
+              - s3:GetBucketEncryption
+              - s3:GetPublicAccessBlock
+            Resource: "*"
+          - Sid: BedrockInvoke
+            Effect: Allow
+            Action:
+              # Inference only. InvokeModel does not create, modify, or delete
+              # any resource. Inference profiles are included because the
+              # diagram review's default model ID is a cross-region profile
+              # (us.*), which requires the profile ARN as well as the
+              # underlying foundation models.
+              - bedrock:InvokeModel
+            Resource:
+              - "arn:aws:bedrock:*::foundation-model/*"
+              - "arn:aws:bedrock:*:*:inference-profile/*"
+
+  # Attached only when DiagramS3BucketName is set. Read-only, and scoped to a
+  # single bucket + prefix rather than "*". Deliberately excludes s3:PutObject,
+  # s3:DeleteObject, and s3:ListBucket -- the tool reads one known key and
+  # never writes or enumerates.
+  DiagramReadOnlyPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Condition: HasDiagramBucket
+    Properties:
+      ManagedPolicyName: !Sub "${AgentName}-diagram-read-policy"
+      Description: Read-only GetObject on the architecture-diagram prefix
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: DiagramGetObjectOnly
+            Effect: Allow
+            Action:
+              - s3:GetObject
+            Resource: !Sub "arn:aws:s3:::${DiagramS3BucketName}/${DiagramS3Prefix}*"
+
+  AgentRuntime:
+    Type: AWS::BedrockAgentCore::AgentRuntime
+    Properties:
+      AgentRuntimeName: !Ref AgentName
+      Description: "Bedrock readiness-only assessment -- 8 pillars, read-only"
+      RoleArn: !GetAtt AgentExecutionRole.Arn
+      AgentRuntimeConfiguration:
+        Python:
+          EntryPoint: bedrock_readiness/delivery/agentcore_agent.py
+          Requirements: requirements.txt
+
+Outputs:
+  AgentRuntimeArn:
+    Value: !GetAtt AgentRuntime.Arn
+    Description: ARN of the deployed readiness-only agent
+  ExecutionRoleArn:
+    Value: !GetAtt AgentExecutionRole.Arn
+    Description: ARN of the agent's execution role
+  DiagramS3AccessGranted:
+    Value: !If [HasDiagramBucket, !Sub "s3:GetObject on ${DiagramS3BucketName}/${DiagramS3Prefix}*", "none"]
+    Description: >
+      S3 read scope granted for diagram review, or "none" when
+      DiagramS3BucketName was left empty. Local-file diagrams need no S3 access.

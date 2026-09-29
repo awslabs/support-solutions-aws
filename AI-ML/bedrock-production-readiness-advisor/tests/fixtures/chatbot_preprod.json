@@ -1,0 +1,188 @@
+{
+  "account_id": "123456789012",
+  "region": "us-east-1",
+  "description": "Customer-facing chatbot in pre-production. About 50% ready -- has basics but missing critical production controls.",
+  "bedrock": {
+    "invocation_logging": {
+      "loggingConfig": {
+        "cloudWatchConfig": {
+          "logGroupName": "/aws/bedrock/invocation-logs"
+        },
+        "s3Config": {}
+      }
+    },
+    "guardrails": [],
+    "custom_models": [],
+    "foundation_models": [
+      {
+        "modelId": "anthropic.claude-3-5-sonnet-20241022-v2:0",
+        "modelName": "Claude 3.5 Sonnet"
+      },
+      {
+        "modelId": "anthropic.claude-3-haiku-20240307-v1:0",
+        "modelName": "Claude 3 Haiku"
+      },
+      {
+        "modelId": "amazon.nova-lite-v1:0",
+        "modelName": "Nova Lite"
+      }
+    ],
+    "knowledge_bases": [],
+    "provisioned_throughputs": [],
+    "inference_profiles": [],
+    "evaluation_jobs": [],
+    "flows": [],
+    "imported_models": [],
+    "batch_inference_jobs": [],
+    "data_retention": {
+      "mode": "inherit"
+    }
+  },
+  "agentcore": {
+    "runtimes": [],
+    "gateways": [],
+    "memories": [],
+    "policies": [],
+    "workload_identities": []
+  },
+  "cloudwatch": {
+    "alarms": [
+      {
+        "AlarmName": "Bedrock-Invocation-Errors",
+        "Namespace": "AWS/Bedrock",
+        "MetricName": "InvocationServerErrors",
+        "Dimensions": [
+          {
+            "Name": "ModelId",
+            "Value": "anthropic.claude-3-5-sonnet-20241022-v2:0"
+          }
+        ]
+      }
+    ],
+    "dashboards": [],
+    "bedrock_log_groups": [
+      {
+        "logGroupName": "/aws/bedrock/invocation-logs"
+      }
+    ],
+    "agentcore_log_groups": []
+  },
+  "iam": {
+    "bedrock_roles": [
+      {
+        "RoleName": "ChatbotApp-ECSTaskRole",
+        "PolicyName": "AmazonBedrockFullAccess",
+        "Arn": "arn:aws:iam::123456789012:role/ChatbotApp-ECSTaskRole"
+      },
+      {
+        "RoleName": "ChatbotApp-LambdaRole",
+        "PolicyName": "BedrockInvokePolicy",
+        "Arn": "arn:aws:iam::123456789012:role/ChatbotApp-LambdaRole"
+      }
+    ],
+    "bedrock_role_policy_documents": [
+      {
+        "role": "ChatbotApp-ECSTaskRole",
+        "arn": "arn:aws:iam::123456789012:role/ChatbotApp-ECSTaskRole",
+        "policy": "AmazonBedrockFullAccess",
+        "type": "attached",
+        "wildcards": true
+      },
+      {
+        "role": "ChatbotApp-LambdaRole",
+        "arn": "arn:aws:iam::123456789012:role/ChatbotApp-LambdaRole",
+        "policy": "BedrockInvokePolicy",
+        "type": "attached",
+        "wildcards": false
+      }
+    ],
+    "bedrock_role_trust_info": [
+      {
+        "RoleName": "ChatbotApp-ECSTaskRole",
+        "Arn": "arn:aws:iam::123456789012:role/ChatbotApp-ECSTaskRole",
+        "TrustedServices": [
+          "bedrock.amazonaws.com"
+        ],
+        "TrustPrincipalWildcard": false
+      },
+      {
+        "RoleName": "ChatbotApp-LambdaRole",
+        "Arn": "arn:aws:iam::123456789012:role/ChatbotApp-LambdaRole",
+        "TrustedServices": [
+          "bedrock.amazonaws.com"
+        ],
+        "TrustPrincipalWildcard": true
+      }
+    ]
+  },
+  "vpc": {
+    "bedrock_endpoints": []
+  },
+  "cloudtrail": {
+    "trails": [
+      {
+        "Name": "org-management-trail",
+        "TrailARN": "arn:aws:cloudtrail:us-east-1:123456789012:trail/org-management-trail",
+        "IsMultiRegionTrail": true,
+        "_status": {
+          "IsLogging": true
+        }
+      }
+    ],
+    "trail_details": [
+      {
+        "Name": "org-management-trail",
+        "TrailARN": "arn:aws:cloudtrail:us-east-1:123456789012:trail/org-management-trail",
+        "IsMultiRegionTrail": true,
+        "IsLogging": true,
+        "EventSelectors": [],
+        "AdvancedEventSelectors": []
+      }
+    ]
+  },
+  "xray": {
+    "trace_destination": {
+      "Destination": "CloudWatchLogs"
+    }
+  },
+  "quotas": {
+    "service_quotas": [
+      {
+        "QuotaName": "InvokeModel requests per minute",
+        "Value": 100
+      },
+      {
+        "QuotaName": "InvokeModel tokens per minute (input)",
+        "Value": 50000
+      }
+    ],
+    "change_history": []
+  },
+  "cost": {
+    "bedrock_cost_and_usage": {
+      "ResultsByTime": [
+        {
+          "Total": {
+            "UnblendedCost": {
+              "Amount": "120.00"
+            }
+          }
+        },
+        {
+          "Total": {
+            "UnblendedCost": {
+              "Amount": "145.00"
+            }
+          }
+        },
+        {
+          "Total": {
+            "UnblendedCost": {
+              "Amount": "150.00"
+            }
+          }
+        }
+      ]
+    }
+  }
+}
