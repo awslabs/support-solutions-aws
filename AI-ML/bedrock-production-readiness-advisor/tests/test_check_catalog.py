@@ -132,7 +132,7 @@ def main() -> int:
     ok(set(CHECK_CATALOG) == set(PILLAR_NAMES),
        "every catalogued pillar has a display name")
 
-    all_ids = [cid for entries in CHECK_CATALOG.values() for cid, _, _ in entries]
+    all_ids = [cid for entries in CHECK_CATALOG.values() for cid, _ in entries]
     ok(len(all_ids) == len(set(all_ids)),
        "catalog check IDs are unique",
        f"{len(all_ids)} entries, {len(set(all_ids))} unique")
@@ -141,18 +141,12 @@ def main() -> int:
 
     bad_prefix = [
         cid for pid, entries in CHECK_CATALOG.items()
-        for cid, _, _ in entries if not cid.startswith(EXPECTED_PREFIX[pid] + "-")
+        for cid, _ in entries if not cid.startswith(EXPECTED_PREFIX[pid] + "-")
     ]
     ok(not bad_prefix, "every ID uses its pillar's prefix", str(bad_prefix))
 
-    bad_origin = [
-        (cid, origin) for entries in CHECK_CATALOG.values()
-        for cid, _, origin in entries if origin not in ("platform", "agent")
-    ]
-    ok(not bad_origin, "every entry records a known origin", str(bad_origin))
-
     unnamed = [cid for entries in CHECK_CATALOG.values()
-               for cid, name, _ in entries if not name.strip()]
+               for cid, name in entries if not name.strip()]
     ok(not unnamed, "every entry has a name", str(unnamed))
 
     print("\n== Emitted checks vs. catalog ==")
@@ -160,7 +154,7 @@ def main() -> int:
 
     uncatalogued = []
     for pillar_id, ids in emitted.items():
-        catalogued = {cid for cid, _, _ in CHECK_CATALOG[pillar_id]}
+        catalogued = {cid for cid, _ in CHECK_CATALOG[pillar_id]}
         for cid in sorted(ids):
             if cid not in catalogued:
                 uncatalogued.append(f"{pillar_id}:{cid}")
@@ -171,7 +165,7 @@ def main() -> int:
     print("\n== Coverage (informational) ==")
     total_emitted = 0
     for pillar_id in CHECK_CATALOG:
-        catalogued = {cid for cid, _, _ in CHECK_CATALOG[pillar_id]}
+        catalogued = {cid for cid, _ in CHECK_CATALOG[pillar_id]}
         hit = emitted[pillar_id] & catalogued
         total_emitted += len(hit)
         missing = sorted(catalogued - hit)
@@ -184,7 +178,7 @@ def main() -> int:
     print("  fixtures do not contain every resource combination.")
 
     # Model Fitness previously had zero coverage -- assert it now runs.
-    mf_hit = emitted["model_fitness"] & {cid for cid, _, _ in CHECK_CATALOG["model_fitness"]}
+    mf_hit = emitted["model_fitness"] & {cid for cid, _ in CHECK_CATALOG["model_fitness"]}
     ok(len(mf_hit) == 4,
        "all 4 Model Fitness checks execute against fixture metrics",
        f"executed: {sorted(mf_hit)}")

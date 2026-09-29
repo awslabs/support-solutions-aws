@@ -130,7 +130,7 @@ ok(not (field_names & suspicious),
 print("\n== Every SEC-*/GR-*/DG-* recommendation is prose, not structured data ==")
 from bedrock_readiness.modules import CHECK_CATALOG
 sensitive_ids = {cid for pid in ("security", "guardrails", "data_governance")
-                 for cid, _, _ in CHECK_CATALOG[pid]}
+                 for cid, _ in CHECK_CATALOG[pid]}
 ok(len(sensitive_ids) == 12, "12 Security/Guardrails/Data Governance checks exist",
    str(len(sensitive_ids)))
 

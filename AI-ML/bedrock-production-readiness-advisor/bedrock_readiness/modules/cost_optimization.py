@@ -4,10 +4,10 @@
 """
 Pillar: Cost Optimization -- Are you spending efficiently?
 
-Base checks (COST-01 through COST-07) ported from the Vipul/Ankur
-`bedrock-readiness-platform`. COST-08 and COST-09 are new, ported from
-Sruthi's `sample-bedrock-readiness-agent` check_cost_projection (D5) -- spend
-growth trend and batch-eligibility. Cost/spend findings are not treated as
+Nine checks (COST-01 through COST-09), covering token tracking, model
+right-sizing, prompt routing, batch inference, provisioned throughput
+utilization, cost alarms, KB embedding cost, batch-eligibility, and
+month-over-month spend growth. Cost/spend findings are not treated as
 security-sensitive, so this pillar runs on both tracks.
 """
 
@@ -45,7 +45,7 @@ def assess(scanner: AccountScanner, scan_data: dict, config: Config) -> PillarRe
         if not isinstance(kbs, ScanError) and kbs:
             result.findings.append(_check_kb_embedding_cost(kbs))
 
-    # COST-08 / COST-09: ported from Sruthi's D5 check_cost_projection
+    # COST-08 / COST-09: batch-eligible on-demand usage + spend growth trend
     result.findings.append(_check_batch_eligible_on_demand(scan_data, wt))
     result.findings.append(_check_spend_growth_trend(scan_data))
 
@@ -182,9 +182,9 @@ def _check_kb_embedding_cost(kbs: list) -> Finding:
 
 
 def _check_batch_eligible_on_demand(scan_data: dict, workload_type: str) -> Finding:
-    """COST-08: ported from Sruthi's D5 -- flags on-demand-only accounts with
-    no batch inference jobs at all (a stronger, account-wide version of
-    COST-04, which only fires for the batch-processing workload type)."""
+    """COST-08: flags on-demand-only accounts with no batch inference jobs
+    at all (a stronger, account-wide version of COST-04, which only fires
+    for the batch-processing workload type)."""
     if workload_type == "batch-processing":
         # COST-04 already covers this workload type specifically.
         return Finding(
@@ -215,9 +215,8 @@ def _check_batch_eligible_on_demand(scan_data: dict, workload_type: str) -> Find
 
 
 def _check_spend_growth_trend(scan_data: dict) -> Finding:
-    """COST-09: ported from Sruthi's D5 -- month-over-month Bedrock spend
-    growth from Cost Explorer, flagged when growing fast without a
-    commitment strategy in place."""
+    """COST-09: month-over-month Bedrock spend growth from Cost Explorer,
+    flagged when growing fast without a commitment strategy in place."""
     cost_data = scan_data.get("cost", {}).get("bedrock_cost_and_usage")
     if isinstance(cost_data, ScanError):
         return Finding(

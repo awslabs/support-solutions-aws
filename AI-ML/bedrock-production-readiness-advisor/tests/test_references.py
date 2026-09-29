@@ -59,7 +59,7 @@ def ok(cond, label, detail=""):
         fails.append(label)
 
 
-KNOWN_IDS = {cid for entries in CHECK_CATALOG.values() for cid, _, _ in entries}
+KNOWN_IDS = {cid for entries in CHECK_CATALOG.values() for cid, _ in entries}
 ALL_CURATED_URLS = {
     r.url
     for refs in list(R.REFERENCES.values()) + list(R.PILLAR_REFERENCES.values())

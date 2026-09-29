@@ -4,9 +4,8 @@
 """
 Pillar: Model Fitness -- Are you using the right model for each job?
 
-New pillar, ported from Sruthi's `sample-bedrock-readiness-agent`
-check_model_selection_fitness (D4). Not security-sensitive -- this is entirely
-about cost/performance-appropriate model selection (diversity, legacy usage,
+Not security-sensitive -- this pillar is entirely about cost- and
+performance-appropriate model selection (diversity, legacy usage,
 premium-model dominance, CRIS), so it runs on both tracks.
 
 Checks: MF-01 through MF-04

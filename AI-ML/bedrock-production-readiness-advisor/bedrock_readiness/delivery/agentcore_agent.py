@@ -4,9 +4,8 @@
 """
 AgentCore / Strands delivery channel -- readiness-only.
 
-Ported from Sruthi's `sample-bedrock-readiness-agent` agent.py pattern (a
-Strands Agent on AgentCore Runtime, calling @tool-decorated functions), with
-each tool wrapping a call into this package's pillar engine -- now all eight
+A Strands Agent on AgentCore Runtime, calling @tool-decorated functions, with
+each tool wrapping a call into this package's pillar engine -- all eight
 pillars, including Security, Guardrails, and Data Governance, generated from
 the same PILLAR_MODULES registry as every other tool here.
 

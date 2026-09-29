@@ -4,12 +4,12 @@
 """
 Pillar: Quota & Capacity -- Can your deployment handle production traffic?
 
-Base checks (QC-01 through QC-10) ported from the Vipul/Ankur
-`bedrock-readiness-platform`. QC-11 (Cross-Region Inference / CRIS Usage) is
-new, ported from Sruthi's `sample-bedrock-readiness-agent` check_quota_headroom
-(D3) -- it's an operational capacity-resilience signal, not a security
-finding, so it belongs on the readiness track along with the rest of this
-pillar.
+Eleven checks (QC-01 through QC-11) covering quota sufficiency, throttle
+events, growth trajectory, quota alarms, provisioned throughput,
+cross-region capacity, model access, quota-increase pipeline, batch usage,
+agent session limits, and Cross-Region Inference (CRIS) usage. All findings
+here are operational capacity-resilience signals rather than security
+findings, so this pillar runs on both tracks.
 """
 
 from bedrock_readiness.core.models import Finding, PillarResult, CheckStatus, FixType, Config
@@ -53,7 +53,7 @@ def assess(scanner: AccountScanner, scan_data: dict, config: Config) -> PillarRe
         if not isinstance(runtimes, ScanError) and runtimes:
             result.findings.append(_check_agent_session_limits(scan_data))
 
-    # QC-11: ported from Sruthi's D3 CRIS detection
+    # QC-11: Cross-Region Inference (CRIS) usage detection
     result.findings.append(_check_cris_usage(scanner))
 
     return result
@@ -325,9 +325,9 @@ def _check_agent_session_limits(scan_data: dict) -> Finding:
 def _check_cris_usage(scanner: AccountScanner) -> Finding:
     """QC-11: Cross-region inference (CRIS) usage detection.
 
-    Ported from Sruthi's check_quota_headroom (D3). CRIS is a capacity
-    resilience signal -- distributing inference across regions reduces the
-    chance a single region's quota exhaustion causes a full outage.
+    CRIS is a capacity resilience signal -- distributing inference across
+    regions reduces the chance a single region's quota exhaustion causes a
+    full outage.
     """
     metrics = scanner.list_metrics("AWS/Bedrock", "Invocations")
     if isinstance(metrics, ScanError):

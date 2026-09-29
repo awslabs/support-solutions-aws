@@ -4,8 +4,7 @@
 """
 Pillar: Observability -- Can you see what's happening with your Bedrock workloads?
 
-Ported unchanged from the Vipul/Ankur `bedrock-readiness-platform`
-(enhanced-version). Not security-sensitive -- runs on both tracks.
+Not security-sensitive -- runs on both tracks.
 
 Checks: OBS-01 through OBS-13
 """

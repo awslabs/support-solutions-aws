@@ -9,7 +9,7 @@ does, how to deploy it, and how to clean it up.
 
 ## Available solutions
 
-### GenAI
+### AI-ML
 
 | Solution | Description |
 |----------|-------------|

@@ -4,8 +4,7 @@
 """
 Pillar: Architecture & Resilience -- Is your deployment resilient and scalable?
 
-Ported unchanged from the Vipul/Ankur `bedrock-readiness-platform`
-(enhanced-version). Not security-sensitive -- runs on both tracks.
+Not security-sensitive -- runs on both tracks.
 
 Checks: ARCH-01 through ARCH-10
 """

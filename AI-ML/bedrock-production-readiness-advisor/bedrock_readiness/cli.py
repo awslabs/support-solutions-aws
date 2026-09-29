@@ -340,16 +340,12 @@ def _run_checks(args):
     """Print the declarative check catalog."""
     selected = [args.pillar] if args.pillar else list(CHECK_CATALOG)
     shown = sum(len(CHECK_CATALOG[p]) for p in selected)
-    origin_label = {
-        "platform": "bedrock-readiness-platform",
-        "agent": "sample-bedrock-readiness-agent",
-    }
 
     print(f"\nBedrock Readiness (readiness-only) -- {shown} of {total_check_count()} checks\n")
     for pid in selected:
         print(f"  {PILLAR_NAMES[pid]}")
-        for check_id, name, origin in CHECK_CATALOG[pid]:
-            print(f"    {check_id:<9} {name:<46} [{origin_label.get(origin, origin)}]")
+        for check_id, name in CHECK_CATALOG[pid]:
+            print(f"    {check_id:<9} {name}")
         print()
     print("  Applicability varies: not every check runs for every workload type,")
     print("  and checks are skipped when the resources they inspect don't exist.")

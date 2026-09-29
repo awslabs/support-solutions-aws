@@ -168,7 +168,7 @@ def _freshness(age: int) -> str:
 
 def _make_pillar_tool(pillar_id: str, module):
     pillar_name = PILLAR_NAMES[pillar_id]
-    check_ids = ", ".join(cid for cid, _, _ in CHECK_CATALOG[pillar_id])
+    check_ids = ", ".join(cid for cid, _ in CHECK_CATALOG[pillar_id])
 
     def _run(region: str = "us-east-1",
              profile: Optional[str] = None,
@@ -421,18 +421,13 @@ def list_readiness_checks(pillar: Optional[str] = None) -> str:
     lines = [
         f"# Readiness checks ({shown} of {total_check_count()})",
         "",
-        "| Check | Name | Pillar | From |",
-        "|-------|------|--------|------|",
+        "| Check | Name | Pillar |",
+        "|-------|------|--------|",
     ]
-    origin_label = {
-        "platform": "bedrock-readiness-platform",
-        "agent": "sample-bedrock-readiness-agent",
-    }
     for pid in selected:
-        for check_id, name, origin in CHECK_CATALOG[pid]:
+        for check_id, name in CHECK_CATALOG[pid]:
             lines.append(
-                f"| `{check_id}` | {name} | {PILLAR_NAMES[pid]} | "
-                f"{origin_label.get(origin, origin)} |"
+                f"| `{check_id}` | {name} | {PILLAR_NAMES[pid]} |"
             )
 
     lines += [

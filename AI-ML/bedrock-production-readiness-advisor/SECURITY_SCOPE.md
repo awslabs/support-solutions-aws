@@ -83,5 +83,5 @@ python tests/test_check_catalog.py               # catalog matches emitted check
 python tests/run_fixtures.py                     # end-to-end pipeline
 ```
 
-These run on every commit in CI (see `.gitlab-ci.yml`), so the scope contract
-above is demonstrated continuously rather than asserted once.
+These run offline — no AWS credentials, no network — so you can reproduce the
+scope contract above yourself.
