@@ -9,6 +9,12 @@ does, how to deploy it, and how to clean it up.
 
 ## Available solutions
 
+### AI-ML
+
+| Solution | Description |
+|----------|-------------|
+| [Bedrock Production Readiness Advisor](AI-ML/bedrock-production-readiness-advisor/) | Assesses Amazon Bedrock workloads for production readiness across security, cost, quota, guardrails, observability, and architecture. |
+
 ### Resilience
 
 | Solution | Description |
