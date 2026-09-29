@@ -47,8 +47,9 @@ pydantic_core==2.46.4 \
     --hash=sha256:9551187363ffc0de2a00b2e47c25aeaeb1020b69b668762966df15fc5659dd5a
 pydantic_settings==2.14.1 \
     --hash=sha256:6e3c7edfd8277687cdc598f56e5cff0e9bfff0910a3749deaa8d4401c3a2b9de
-pyjwt==2.13.0 \
-    --hash=sha256:66adcc2aff09b3f1bbd95fc1e1577df8ac8723c978552fd43304c8a290ac5728
+pyjwt==2.14.0 \
+    --hash=sha256:77283c83fb56ecf566a886c757a714bc83668e38156de2cce8263302f42e0b86 \
+    --hash=sha256:ad0cef71c756a56e74863c2919cf0985f72decbcfcb550ee2f422e7c62b5eedc
 python_dateutil==2.9.0.post0 \
     --hash=sha256:a8b2bc7bffae282281c8140a97d3aa9c14da0b136dfe83f850eea9a5f7470427
 python_dotenv==1.2.2 \
