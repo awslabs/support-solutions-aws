@@ -1,0 +1,89 @@
+# Bedrock Readiness (Readiness-Only) -- Configuration
+version: "readiness-only-1.0"
+
+# This solution assesses Observability, Architecture & Resilience, Quota &
+# Capacity, Cost Optimization, Model Fitness, Security, Guardrails, and Data
+# Governance -- 8 pillars, all using read-only API calls only. There is no
+# "track" setting. Every finding is plain-text guidance plus a public AWS doc
+# link, never a deployable IAM policy, guardrail config, or CFN/Terraform
+# snippet. See ./README.md for the read-only and no-deployable-artifact
+# guarantees.
+#
+# The architecture-diagram review (below) covers a narrower 5 pillars
+# (Observability, Architecture, Quota & Capacity, Cost Optimization, Model
+# Fitness) -- a vision model reading a picture is a less verifiable source for
+# security-adjacent claims than a live API read, so that boundary was left in
+# place deliberately. See ./README.md, "Architecture diagram review".
+
+# Assessment mode: "pre-production" | "production" | "auto" (default)
+mode: "auto"
+
+# Workload type (auto-detected if not specified):
+#   inference-api, customer-facing-chatbot, rag-pipeline,
+#   multi-agent, batch-processing, fine-tuning, multi-modal, general
+workload_type: "general"
+
+# Launch date (optional -- reserved for future urgency scoring)
+# launch_date: "2026-10-15"
+
+# Regions to scan
+regions:
+  - us-east-1
+
+# Production traffic estimate (recommended for pre-production mode)
+# production_estimate:
+#   peak_rpm: 2000
+#   average_rpm: 800
+
+# Pillar weights (optional -- defaults based on workload_type). Must sum to 1.0.
+# custom_weights:
+#   observability: 0.16
+#   architecture: 0.21
+#   quota_capacity: 0.16
+#   cost_optimization: 0.11
+#   model_fitness: 0.12
+#   security: 0.08
+#   guardrails: 0.07
+#   data_governance: 0.09
+
+# Severity overrides (add after first run -- use check names from report)
+# severity_overrides:
+#   - check: "Cross-Region Inference"
+#     severity: "LOW"
+#     reason: "Internal tool -- single region acceptable"
+
+# Model Fitness (MF-02/MF-03) classifies models by substring match against a
+# hardcoded default list (core "opus"/"sonnet-4"/"nova-premier" as premium,
+# "claude-v2"/"claude-instant"/etc. as legacy). Override either list here so
+# a new model generation doesn't need a code change to be classified
+# correctly -- matching is substring-based and case-insensitive.
+# premium_model_markers:
+#   - "opus"
+#   - "sonnet-4"
+#   - "nova-premier"
+# legacy_model_markers:
+#   - "claude-v2"
+#   - "claude-instant"
+
+# Architecture diagram review (optional design source).
+# When set, `bedrock-readiness assess` also reviews the diagram and adds a
+# design-vs-reality comparison. Read-only: a local file read, or s3:GetObject
+# for an s3:// URI, plus bedrock:InvokeModel for the analysis. Nothing is
+# uploaded -- point this at a file you already have.
+# Do NOT point this at a diagram containing regulated or customer-confidential
+# data. Override on the CLI with --diagram.
+# diagram: "<path to your PNG/JPEG/GIF/WEBP diagram>"
+# diagram: "s3://<your-bucket>/<your-key>.png"
+
+# Model for the diagram review. Leave unset and the tool selects the cheapest
+# image-capable model your account has, preferring a cross-region inference
+# profile when one covers it. There is no default model, and none is assumed to
+# be enabled. Set this only to force a specific choice; it is used verbatim,
+# with no capability check.
+# diagram_model_id: "<model or inference-profile ID available in your account>"
+
+# Output configuration
+output:
+  format: "html"                    # html | markdown | json
+  file: "readiness-report.html"
+  include_fix_templates: true

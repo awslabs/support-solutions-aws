@@ -1,0 +1,22 @@
+# Core -- required for the CLI and Python API.
+# boto3 is a floor, not a pin: several checks call APIs newer than 1.35
+# (bedrock:GetAccountDataRetention, ListEnforcedGuardrailsConfiguration,
+# ListInferenceProfiles, ListModelInvocationJobs, xray:GetTraceSegmentDestination).
+# On an older SDK those checks degrade to ERROR rather than crashing, but they
+# cannot run. >=1.40 is the floor where all of them exist.
+boto3>=1.40.0
+pyyaml==6.0.2
+
+# Optional -- AgentCore/Strands delivery channel
+# (bedrock_readiness/delivery/agentcore_agent.py). Version pinned to match
+# the one validated against the reference AgentCore-hosted sample.
+# strands-agents==0.1.5
+
+# Optional -- MCP server delivery channel
+# (bedrock_readiness/delivery/mcp_server.py). Needed to use this tool from
+# Kiro, Claude Code, Cursor, Windsurf, or Q Developer.
+#   pip install 'bedrock-readiness-only[mcp]'   or uncomment below
+# mcp>=1.2.0
+
+# The architecture-diagram review needs no extra dependency: it uses the
+# bedrock-runtime Converse API through boto3, already required above.

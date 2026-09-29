@@ -1,0 +1,248 @@
+{
+  "account_id": "111222333444",
+  "region": "eu-west-1",
+  "description": "RAG pipeline (65% ready). Knowledge Bases configured, decent security, but missing guardrails and quota management.",
+  "bedrock": {
+    "invocation_logging": {
+      "loggingConfig": {
+        "cloudWatchConfig": {
+          "logGroupName": "/aws/bedrock/invocation-logs"
+        },
+        "s3Config": {
+          "bucketName": "company-bedrock-audit-eu"
+        }
+      }
+    },
+    "guardrails": [
+      {
+        "id": "gr-rag-001",
+        "name": "RAG-Content-Filter",
+        "status": "READY",
+        "version": "1"
+      }
+    ],
+    "custom_models": [],
+    "foundation_models": [
+      {
+        "modelId": "anthropic.claude-3-5-sonnet-20241022-v2:0",
+        "modelName": "Claude 3.5 Sonnet"
+      },
+      {
+        "modelId": "amazon.titan-embed-text-v2:0",
+        "modelName": "Titan Embeddings V2"
+      }
+    ],
+    "knowledge_bases": [
+      {
+        "knowledgeBaseId": "kb-legal-001",
+        "name": "LegalDocuments",
+        "status": "ACTIVE"
+      },
+      {
+        "knowledgeBaseId": "kb-policy-002",
+        "name": "CompanyPolicies",
+        "status": "ACTIVE"
+      },
+      {
+        "knowledgeBaseId": "kb-faq-003",
+        "name": "CustomerFAQ",
+        "status": "ACTIVE"
+      }
+    ],
+    "provisioned_throughputs": [],
+    "inference_profiles": [],
+    "evaluation_jobs": [
+      {
+        "jobName": "rag-quality-eval-q3",
+        "status": "Completed"
+      }
+    ],
+    "flows": [
+      {
+        "flowId": "flow-rag-pipeline",
+        "name": "RAG-Query-Flow",
+        "status": "ACTIVE"
+      }
+    ],
+    "imported_models": [],
+    "batch_inference_jobs": [],
+    "data_retention": {
+      "mode": "provider_data_share"
+    },
+    "guardrail_details": [
+      {
+        "guardrailId": "gr-rag-001",
+        "name": "RAG-Content-Filter",
+        "status": "READY",
+        "version": "DRAFT",
+        "topicPolicy": {
+          "topics": []
+        },
+        "sensitiveInformationPolicy": {}
+      }
+    ],
+    "enforced_guardrails": []
+  },
+  "agentcore": {
+    "runtimes": [],
+    "gateways": [],
+    "memories": [],
+    "policies": [],
+    "workload_identities": []
+  },
+  "cloudwatch": {
+    "alarms": [
+      {
+        "AlarmName": "Bedrock-RAG-Errors",
+        "Namespace": "AWS/Bedrock",
+        "MetricName": "InvocationServerErrors",
+        "Dimensions": [
+          {
+            "Name": "ModelId",
+            "Value": "anthropic.claude-3-5-sonnet-20241022-v2:0"
+          }
+        ]
+      },
+      {
+        "AlarmName": "Bedrock-RAG-Latency-P99",
+        "Namespace": "AWS/Bedrock",
+        "MetricName": "InvocationLatency",
+        "Dimensions": []
+      }
+    ],
+    "dashboards": [
+      {
+        "DashboardName": "RAG-GenAI-Dashboard"
+      }
+    ],
+    "bedrock_log_groups": [
+      {
+        "logGroupName": "/aws/bedrock/invocation-logs"
+      }
+    ],
+    "agentcore_log_groups": []
+  },
+  "iam": {
+    "bedrock_roles": [
+      {
+        "RoleName": "RAG-Pipeline-InvokeRole",
+        "PolicyName": "BedrockRAGScopedAccess",
+        "Arn": "arn:aws:iam::111222333444:role/RAG-Pipeline-InvokeRole"
+      }
+    ],
+    "bedrock_role_policy_documents": [
+      {
+        "role": "RAG-Pipeline-InvokeRole",
+        "arn": "arn:aws:iam::111222333444:role/RAG-Pipeline-InvokeRole",
+        "policy": "BedrockRAGScopedAccess",
+        "type": "attached",
+        "wildcards": false
+      }
+    ],
+    "bedrock_role_trust_info": [
+      {
+        "RoleName": "RAG-Pipeline-InvokeRole",
+        "Arn": "arn:aws:iam::111222333444:role/RAG-Pipeline-InvokeRole",
+        "TrustedServices": [
+          "bedrock.amazonaws.com"
+        ],
+        "TrustPrincipalWildcard": false
+      }
+    ]
+  },
+  "vpc": {
+    "bedrock_endpoints": [
+      {
+        "VpcEndpointId": "vpce-eu-rag-001",
+        "ServiceName": "com.amazonaws.eu-west-1.bedrock-runtime",
+        "State": "available",
+        "PolicyDocument": "{\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":\"*\",\"Action\":\"*\",\"Resource\":\"*\"}]}"
+      }
+    ]
+  },
+  "cloudtrail": {
+    "trails": [
+      {
+        "Name": "eu-org-trail",
+        "TrailARN": "arn:aws:cloudtrail:eu-west-1:111222333444:trail/eu-org-trail",
+        "IsMultiRegionTrail": true,
+        "_status": {
+          "IsLogging": true
+        }
+      }
+    ],
+    "trail_details": [
+      {
+        "Name": "eu-org-trail",
+        "TrailARN": "arn:aws:cloudtrail:eu-west-1:111222333444:trail/eu-org-trail",
+        "IsMultiRegionTrail": true,
+        "IsLogging": true,
+        "EventSelectors": [],
+        "AdvancedEventSelectors": []
+      }
+    ]
+  },
+  "xray": {
+    "trace_destination": {}
+  },
+  "quotas": {
+    "service_quotas": [
+      {
+        "QuotaName": "InvokeModel requests per minute",
+        "Value": 50
+      },
+      {
+        "QuotaName": "InvokeModel tokens per minute (input)",
+        "Value": 100000
+      }
+    ],
+    "change_history": []
+  },
+  "cost": {
+    "bedrock_cost_and_usage": {
+      "ResultsByTime": [
+        {
+          "Total": {
+            "UnblendedCost": {
+              "Amount": "400.00"
+            }
+          }
+        },
+        {
+          "Total": {
+            "UnblendedCost": {
+              "Amount": "420.00"
+            }
+          }
+        },
+        {
+          "Total": {
+            "UnblendedCost": {
+              "Amount": "430.00"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "s3": {
+    "logging_destination_security": {
+      "BucketName": "company-bedrock-audit-eu",
+      "EncryptionRules": [
+        {
+          "ApplyServerSideEncryptionByDefault": {
+            "SSEAlgorithm": "AES256"
+          }
+        }
+      ],
+      "EncryptionError": null,
+      "PublicAccessBlock": {
+        "BlockPublicAcls": true,
+        "IgnorePublicAcls": true,
+        "BlockPublicPolicy": false,
+        "RestrictPublicBuckets": true
+      },
+      "PublicAccessBlockError": null
+    }
+  }
+}
