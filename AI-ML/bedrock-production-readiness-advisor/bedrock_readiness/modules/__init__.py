@@ -1,38 +1,36 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: MIT-0
 
+"""Assessment modules -- one per pillar.
+
+Eight pillars, all assessed the same way: read-only API calls, severity-rated
+findings, plain-text recommendations pointing at public AWS documentation.
+Security, Guardrails, and Data Governance are assessed under the same
+constraint as every other pillar here -- no deployable policy, template, or
+configuration is ever generated; see core/scanner.py for exactly which
+read-only calls back each pillar and why each is scoped the way it is.
 """
-Pillar module registry -- readiness-only.
 
-Registers the eight readiness pillars with the assessment pipeline. All eight
-run on both the readiness and platform tracks; there is no pillar-level
-security/non-security split any more, because Security, Guardrails, and Data
-Governance are now assessed here using read-only API calls on the same terms
-as every other pillar.
-"""
-
-from importlib import import_module
-
-PILLAR_ORDER = [
-    "observability",
-    "architecture",
-    "quota_capacity",
-    "cost_optimization",
-    "model_fitness",
-    "security",
-    "guardrails",
-    "data_governance",
-]
+from . import (
+    observability,
+    architecture,
+    quota_capacity,
+    cost_optimization,
+    model_fitness,
+    security,
+    guardrails,
+    data_governance,
+)
 
 PILLAR_MODULES = {
-    "observability": import_module("bedrock_readiness.modules.observability"),
-    "architecture": import_module("bedrock_readiness.modules.architecture"),
-    "quota_capacity": import_module("bedrock_readiness.modules.quota_capacity"),
-    "cost_optimization": import_module("bedrock_readiness.modules.cost_optimization"),
-    "model_fitness": import_module("bedrock_readiness.modules.model_fitness"),
-    "security": import_module("bedrock_readiness.modules.security"),
-    "guardrails": import_module("bedrock_readiness.modules.guardrails"),
-    "data_governance": import_module("bedrock_readiness.modules.data_governance"),
+    "observability": observability,
+    "architecture": architecture,
+    "quota_capacity": quota_capacity,
+    "cost_optimization": cost_optimization,
+    "model_fitness": model_fitness,
+    "security": security,
+    "guardrails": guardrails,
+    "data_governance": data_governance,
 }
 
 PILLAR_NAMES = {
