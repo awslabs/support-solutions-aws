@@ -1,0 +1,28 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Generated reports
+wa-report.html
+
+# HTML reports
+*.html
+
+# Kiro local settings
+.kiro/
+
+# macOS
+.DS_Store
+
+# CDK
+cdk.out/
+
+# Internal dev changelog — local only, not for public release
+CHANGES-phase1-agentcore-transport.md

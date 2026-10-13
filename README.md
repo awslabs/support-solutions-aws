@@ -14,6 +14,7 @@ does, how to deploy it, and how to clean it up.
 | Solution | Description |
 |----------|-------------|
 | [Bedrock Production Readiness Advisor](AI-ML/bedrock-production-readiness-advisor/) | Assesses Amazon Bedrock workloads for production readiness across security, cost, quota, guardrails, observability, and architecture. |
+| [Well-Architected Review MCP Server for Amazon SageMaker](AI-ML/well-architected-review-mcp-server-for-sagemaker/) | Validates Amazon SageMaker workloads against the six AWS Well-Architected pillars using read-only APIs; returns prioritized findings with severities and recommendations. Runs locally in an IDE or hosted on Amazon Bedrock AgentCore. |
 
 ### Resilience
 
