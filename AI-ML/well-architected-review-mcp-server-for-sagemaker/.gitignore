@@ -23,6 +23,3 @@ wa-report.html
 
 # CDK
 cdk.out/
-
-# Internal dev changelog — local only, not for public release
-CHANGES-phase1-agentcore-transport.md
