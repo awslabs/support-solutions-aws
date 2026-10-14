@@ -4,9 +4,7 @@ Answers, in a consistent way, *"is this Amazon Bedrock deployment
 operationally ready for production, and what should I fix first?"* — against a
 live account, an architecture diagram, or both.
 
-> **This is sample code, for non-production usage.** You should work with your
-> security and legal teams to meet your organizational security, regulatory,
-> and compliance requirements before deployment.
+> **Disclaimer:** Before using this solution, you should consider conducting your own independent assessment to ensure that your use would comply with your own specific security and quality control practices and standards, as well as the laws, rules, and regulations that govern you and your content.
 
 ## Overview
 

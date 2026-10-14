@@ -1,6 +1,6 @@
 # Well-Architected Review MCP Server for Amazon SageMaker
 
-> **⚠️ Sample / non-production software.** This project is provided as a sample for evaluation and local development. It has not been assessed or hardened for production use. Before deploying it to production, independently review the IAM execution-role scope, authentication and network mode, container base-image patching, and alignment with your organization's security and compliance requirements. All findings and recommendations it produces are advisory and must be independently verified. This is sample code, for non-production usage. You should work with your security and legal teams to meet your organizational security, regulatory and compliance requirements before deployment.
+> **Disclaimer:** Before using this solution, you should consider conducting your own independent assessment to ensure that your use would comply with your own specific security and quality control practices and standards, as well as the laws, rules, and regulations that govern you and your content. In particular, review the IAM execution-role scope, authentication and network mode, and container base-image patching before deployment. All findings and recommendations it produces are advisory and must be independently verified.
 
 ## Overview
 
