@@ -2,6 +2,8 @@
 
 An MCP (Model Context Protocol) server that automatically recommends AWS Fault Injection Simulator (FIS) experiments based on DevOps Agent findings. Helps teams quickly design chaos engineering experiments to validate system resilience.
 
+> **Disclaimer:** Before using this solution, you should consider conducting your own independent assessment to ensure that your use would comply with your own specific security and quality control practices and standards, as well as the laws, rules, and regulations that govern you and your content.
+
 ## Features
 
 - 🔍 Analyzes DevOps findings and suggests relevant FIS experiments

@@ -21,6 +21,15 @@ A good submission is:
    that fits it best (for example `Resilience/`). If no existing category fits, create one.
 2. Add a `README.md` in your solution's directory covering what it does, how to deploy and
    use it, the IAM permissions it requires, any prerequisites, and how to clean up.
+   Unless a maintainer tells you otherwise, include this notice near the top:
+
+   ```
+   > **Disclaimer:** Before using this solution, you should consider conducting your own
+   > independent assessment to ensure that your use would comply with your own specific
+   > security and quality control practices and standards, as well as the laws, rules, and
+   > regulations that govern you and your content.
+   ```
+
 3. Submit source code only. Do not include pre-built or compiled artifacts such as `.zip`,
    `.exe`, or `.jar` files — users need to be able to read what they are running.
 4. Add the license header to each source file:

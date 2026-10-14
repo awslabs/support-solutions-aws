@@ -27,6 +27,13 @@ does, how to deploy it, and how to clean it up.
 Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for what belongs here and
 how to submit a solution. Please also review our [Code of Conduct](CODE_OF_CONDUCT.md).
 
+## Disclaimer
+
+Before using a solution, you should consider conducting your own independent assessment to
+ensure that your use would comply with your own specific security and quality control
+practices and standards, as well as the laws, rules, and regulations that govern you and
+your content.
+
 ## Security
 
 See [SECURITY.md](SECURITY.md) for how to report a security issue. Please do not create a
