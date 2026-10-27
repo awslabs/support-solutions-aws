@@ -22,6 +22,12 @@ does, how to deploy it, and how to clean it up.
 |----------|-------------|
 | [Guidance on Enhancing Resilience with DevOps Agent and Fault Injection Service](Resilience/guidance-for-enhancing-resilience-devops-agent-fis/) | An MCP server that recommends AWS Fault Injection Service (FIS) experiments based on DevOps Agent findings, helping teams design chaos engineering experiments to validate system resilience. |
 
+### Operations
+
+| Solution | Description |
+|----------|-------------|
+| [Service Lifecycle Tracker on AWS](Operations/service-lifecycle-tracker/) | Automatically track AWS service deprecations, find the resources in your account that are affected, and manage remediation. |
+
 ## Contributing
 
 Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for what belongs here and
