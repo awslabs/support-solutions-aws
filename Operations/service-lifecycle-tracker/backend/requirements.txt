@@ -1,0 +1,19 @@
+# Lambda bundle dependencies, pinned to exact versions so every deploy installs
+# the same code (threat model M-027). Transitive dependencies are pinned too.
+# Upgrade deliberately: change the versions, run the tests and pip-audit, deploy.
+aws-durable-execution-sdk-python==2.0.0
+boto3==1.43.114
+python-dateutil==2.9.0.post0
+requests==2.34.2
+beautifulsoup4==4.15.0
+# transitive
+botocore==1.43.114
+s3transfer==0.19.2
+jmespath==1.1.0
+urllib3==2.8.0
+certifi==2026.10.23
+charset-normalizer==3.5.2
+idna==3.20
+six==1.17.0
+soupsieve==3.0.3
+typing_extensions==4.16.0
