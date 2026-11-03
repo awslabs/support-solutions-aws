@@ -66,14 +66,14 @@ class HibernateAIStack(Stack):
                 "NOTIFICATION_TOPIC_ARN": notification_topic.topic_arn,
                 "PREFREEZE_MINUTES": "15",
                 "CROSS_ACCOUNT_ROLE": "HibernateAI-CrossAccount",
-                # Safety defaults (review #3/#5). Runtime DynamoDB __config__ overrides these;
+                # Safety defaults. Runtime DynamoDB __config__ overrides these;
                 # empty/zero keeps today's behavior (no threshold gate, no approver allowlist).
                 "COST_THRESHOLD_MONTHLY_USD": "0",
                 "IAC_MANAGED_POLICY": "stop_start",
-                # #7 model abstraction: primary + comma-separated fallback chain.
+                # Model abstraction: primary + comma-separated fallback chain.
                 "BEDROCK_MODEL_ID": "anthropic.claude-3-haiku-20240307-v1:0",
                 "BEDROCK_MODEL_FALLBACKS": "anthropic.claude-3-5-sonnet-20240620-v1:0,anthropic.claude-3-sonnet-20240229-v1:0",
-                # Review round-2 #6: metrics lookback window (days) for idle analysis.
+                # Metrics lookback window (days) for idle analysis.
                 # 15 is a safer default than 7 for bursty workloads; clamped to 1..90 in code.
                 "METRICS_LOOKBACK_DAYS": "15",
             },
@@ -81,7 +81,7 @@ class HibernateAIStack(Stack):
         state_table.grant_read_write_data(widget_fn)
         notification_topic.grant_publish(widget_fn)
 
-        # c3: permissions boundary — the HARD CEILING on the widget role. Effective permissions
+        # Permissions boundary — the HARD CEILING on the widget role. Effective permissions
         # are the INTERSECTION of the inline policies (below) and this boundary, so a future
         # over-broad inline edit still cannot terminate/delete/stop a resource that is not
         # enrolled (HibernateAI=true) or that is protected (prod/CostSaverProtect). Defense-in-depth.
@@ -185,7 +185,7 @@ class HibernateAIStack(Stack):
         ))
         # Multi-account: Organizations + STS assume role
         # ListParents is required by safety.list_account_ous() for OU-based prod
-        # classification (review #3 OU awareness).
+        # classification (OU awareness).
         widget_fn.add_to_role_policy(iam.PolicyStatement(
             actions=["organizations:ListAccounts", "organizations:DescribeOrganization",
                      "organizations:ListParents", "organizations:ListOrganizationalUnitsForParent"],
@@ -197,7 +197,7 @@ class HibernateAIStack(Stack):
             resources=[f"arn:aws:iam::*:role/HibernateAI-CrossAccount"],
             # Scope the wildcard-account AssumeRole to this AWS Organization only, so the role
             # can never assume a same-named HibernateAI-CrossAccount role in an account outside
-            # the org (CSR LOW). The target role's trust policy also enforces PrincipalOrgID
+            # the org. The target role's trust policy also enforces PrincipalOrgID
             # (see multi_account.py), giving two independent org guards.
             conditions={"StringEquals": {"aws:ResourceOrgID": "${aws:PrincipalOrgID}"}},
         ))

@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT-0
 """Smoke tests — prove the test harness works and anchor current baseline behavior.
 
-These are intentionally minimal; each subagent adds focused tests for its own change.
+These are intentionally minimal; focused tests cover each change.
 The backward-compat assertions here are the anchor the review work must not regress:
 with no config, discovery groups by ``project_name`` exactly like today.
 """

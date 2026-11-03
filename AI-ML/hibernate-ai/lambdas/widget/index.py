@@ -261,7 +261,7 @@ def _find_appstream_fleets(tag_filter):
 def esc(v):
     """HTML-escape any externally-sourced value (AWS tag/resource names, project
     names, NLP input, LLM output) before interpolating into an HTML string.
-    Prevents stored/reflected XSS in the CloudWatch custom-widget HTML (CSR findings).
+    Prevents stored/reflected XSS in the CloudWatch custom-widget HTML.
     Quotes are escaped too so values are safe inside HTML attributes."""
     return html.escape("" if v is None else str(v), quote=True)
 

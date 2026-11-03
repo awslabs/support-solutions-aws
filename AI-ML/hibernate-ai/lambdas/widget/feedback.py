@@ -1,6 +1,6 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: MIT-0
-"""Recommendation validation + human feedback loop (review #8).
+"""Recommendation validation + human feedback loop.
 
 Three pieces:
   1. Deterministic guardrail  — validate an LLM recommendation against the resource's

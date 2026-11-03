@@ -1,6 +1,6 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: MIT-0
-"""Network-context capture + pre-restore drift validation (review #4).
+"""Network-context capture + pre-restore drift validation.
 
 While a resource is hibernated its captured network context (security groups, subnet,
 EIP) can drift — a SG or subnet may be deleted by other automation. Restoring blindly

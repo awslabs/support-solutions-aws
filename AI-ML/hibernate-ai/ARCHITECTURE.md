@@ -146,7 +146,7 @@ project_name = <project-identifier>     (default grouping key, e.g. "lending-pla
 environment  = <env>                     (e.g., "dev", "staging", "qa", "sandbox")
 ```
 
-Flexible tagging (review #1/#2), configured in DynamoDB `__config__` via `config.py`:
+Flexible tagging, configured in DynamoDB `__config__` via `config.py`:
 - `grouping_tag_keys` — ordered fallback list; discovery uses the first present key per
   resource (e.g. `["project_name", "App_name", "asset_id"]`). Falls back to `__untagged__`.
 - `environment_tag_keys` — ordered fallback for environment classification
@@ -207,7 +207,7 @@ the capability is simply absent:
 - **StackSets / Organizations / cross-account** reads are scoped to the `HibernateAI-*` names;
   the cross-account role is read-only (see Enterprise multi-account below).
 
-## Model abstraction & resilience (review #7)
+## Model abstraction & resilience
 
 The Bedrock model is **not hardcoded**. `advisor.get_model_chain()` builds an ordered
 try-list from (1) DynamoDB `__config__` (`bedrock_model` + `bedrock_model_fallbacks`),
@@ -235,7 +235,7 @@ inference-profile ARNs) — still least-privilege, never `*`.
 - **Max-hibernation assumptions:** restore validity depends on AMI/snapshot retention — document
   a retention policy that exceeds your maximum expected hibernation window.
 
-## Recommendation validation & feedback loop (review #8)
+## Recommendation validation & feedback loop
 
 Bedrock output is not trusted blindly:
 - **Deterministic guardrail** (`feedback.validate_recommendation`): before display, each
@@ -254,7 +254,7 @@ Bedrock output is not trusted blindly:
   (default: precision 1.0 = never green-light an active resource, recall ≥ 0.8). Run it in
   the pipeline: `python tests/eval_recommendations.py`.
 
-## Enterprise multi-account (review #6)
+## Enterprise multi-account
 
 - **Read-only cross-account aggregation.** `multi_account.aggregate_all_accounts` iterates the
   enabled accounts (`discover_all_accounts`), assumes the **read-only** `HibernateAI-CrossAccount`

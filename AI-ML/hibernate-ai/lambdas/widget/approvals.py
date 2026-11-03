@@ -1,6 +1,6 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: MIT-0
-"""Approval workflow + role separation for HibernateAI (review #5).
+"""Approval workflow + role separation for HibernateAI.
 
 - Read vs privileged action classification: ``analyze`` is read-only; ``save``/``restore``
   are privileged (destructive). Privileged actions can be gated on caller identity and,
@@ -16,14 +16,14 @@ from datetime import datetime
 import boto3
 
 # prefreeze triggers an SNS notification and snooze/feedback mutate state, so NONE of them
-# are read-only. They are gated below (CSR: every state-changing/side-effecting action must
+# are read-only. They are gated below (every state-changing/side-effecting action must
 # pass authorize()).
 READ_ONLY_ACTIONS = {"analyze", "nlp", "list_accounts", "detect_tags"}
 # Every STATE-CHANGING action is privileged and must pass authorize(). This includes not
 # just the directly-destructive save/restore, but also actions that can REWRITE the safety
 # controls themselves (set_config can change the approver allowlist/deny-list/thresholds),
 # schedule/rule/account mutations, and `approve` (which executes the destructive hibernate).
-# Omitting any of these lets an unauthenticated caller bypass the approval model (CSR HIGH).
+# Omitting any of these lets an unauthenticated caller bypass the approval model.
 PRIVILEGED_ACTIONS = {
     "save", "restore", "deploy_stackset", "approve",
     "set_config", "set_schedule", "remove_schedule",
@@ -89,7 +89,7 @@ def authorize(action, event, *, config=None):
     EXACT principal ARN. Admin actions (changing the allowlist/thresholds) additionally
     require the caller to be in the ``admins`` allowlist.
 
-    Review round-2 #4 / CSR — honest limitations made explicit:
+    Honest limitations made explicit:
 
     1. **Transport / identity-trust limitation:** CloudWatch custom-widget events do NOT
        natively carry a verified IAM identity. ``caller_identity`` reads a principal from
@@ -103,7 +103,7 @@ def authorize(action, event, *, config=None):
        privileged actions are DENIED. There is no opt-in to skip this — a deployment with no
        ``approvers`` list simply cannot perform privileged actions. (The previous demo
        fall-open switch, ``ALLOW_UNCONFIGURED_PRIVILEGED``, was removed: shipping a one-flag
-       way to disable authorization on destructive actions is a needless footgun — CSR LOW.)
+       way to disable authorization on destructive actions is a needless footgun.)
     """
     if action in READ_ONLY_ACTIONS:
         return True, "read-only"
@@ -119,13 +119,13 @@ def authorize(action, event, *, config=None):
     principal = caller_identity(event)
     if principal is None:
         return False, "caller identity unknown; privileged action requires an approver"
-    # EXACT match only — a suffix/endswith match (previous behavior, CSR MEDIUM) would let
+    # EXACT match only — a suffix/endswith match (previous behavior) would let
     # an attacker-chosen principal whose ARN merely ENDS WITH an allowlisted string pass.
     if principal not in approvers:
         return False, f"principal {principal} is not in the approver allowlist"
     # Admin actions (rewriting the approver/deny lists or thresholds) need the stricter
     # admins allowlist — and FAIL CLOSED: if no admins list is configured, admin actions are
-    # DENIED (previously any approver passed — CSR MEDIUM). A deployment may opt into letting
+    # DENIED (previously any approver passed). A deployment may opt into letting
     # approvers double as admins via allow_approver_as_admin, for demo/simple setups.
     if action in ADMIN_ACTIONS:
         admins = cfg.get("admins") or []
@@ -143,7 +143,7 @@ def authorize(action, event, *, config=None):
 
 
 def verify_approver_distinct(approver_principal, requested_by):
-    """Second-person approval (CSR HIGH): the approver MUST differ from the requester.
+    """Second-person approval: the approver MUST differ from the requester.
 
     Returns (ok, reason). An approver who is also the requester (or an unknown approver
     identity) fails the check, so a caller cannot approve their own pending request.

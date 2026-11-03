@@ -110,7 +110,7 @@ def get_cross_account_cfn_template():
                     "PermissionsBoundary": {"Ref": "HibernateAIBoundary"},
                     "AssumeRolePolicyDocument": {
                         "Version": "2012-10-17",
-                        # c4 (confused-deputy): only the HibernateAI Lambda's management account
+                        # Confused-deputy guard: only the HibernateAI Lambda's management account
                         # may assume this role, AND only from within our AWS Organization.
                         "Statement": [{"Effect": "Allow",
                                        "Principal": {"AWS": {"Fn::Sub": "arn:aws:iam::${ManagementAccountId}:root"}},
@@ -141,12 +141,12 @@ def get_cross_account_cfn_template():
     }
 
 
-# ── StackSets deployment path (Subagent E: review #6) ───────────────────────
+# ── StackSets deployment path ───────────────────────
 def get_stackset_template():
     """Same role template as get_cross_account_cfn_template(), for use as a StackSet.
     Deployed to selected OUs, it self-populates ManagementAccountId via the admin account.
     Least-privilege note: the cross-account policy is still Resource:"*" for discovery
-    breadth; narrowing is tracked in the cross-cutting IAM sweep."""
+    breadth; narrowing is tracked as future work."""
     return get_cross_account_cfn_template()
 
 
@@ -160,7 +160,7 @@ def deploy_stackset_to_ous(ou_ids, management_account_id=None, stackset_name="Hi
     cfn = cfn_client or boto3.client("cloudformation")
     mgmt = management_account_id or boto3.client("sts").get_caller_identity()["Account"]
     regions = regions or [os.environ.get("AWS_REGION", "us-east-1")]
-    # c4: resolve the Organization ID for the trust-policy PrincipalOrgID guard.
+    # Resolve the Organization ID for the trust-policy PrincipalOrgID guard.
     try:
         org_id = boto3.client("organizations").describe_organization()["Organization"]["Id"]
     except Exception as e:
@@ -199,7 +199,7 @@ def deploy_stackset_to_ous(ou_ids, management_account_id=None, stackset_name="Hi
     return result
 
 
-# ── Consolidated multi-account dashboard (Subagent E: review #6) ────────────
+# ── Consolidated multi-account dashboard ────────────
 def aggregate_all_accounts(discover_fn):
     """Aggregate per-account project discovery into one consolidated view.
 

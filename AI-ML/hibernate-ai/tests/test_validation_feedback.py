@@ -1,6 +1,6 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: MIT-0
-"""Tests for recommendation validation + feedback loop (review #8)."""
+"""Tests for recommendation validation + feedback loop."""
 import pytest
 
 import feedback

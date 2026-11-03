@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: MIT-0
-"""Offline evaluation harness for HibernateAI recommendation quality (review #8).
+"""Offline evaluation harness for HibernateAI recommendation quality.
 
 Measures precision/recall of the DETERMINISTIC guardrail (feedback.validate_recommendation)
 against a labeled dataset of known-idle vs known-active resources. Runs in CI with no AWS

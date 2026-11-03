@@ -142,7 +142,7 @@ class TestApproverGate:
         assert allowed is True
 
     def test_unconfigured_default_fails_closed(self):
-        # CSR remediation: the SECURE default is fail-closed — privileged actions are
+        # Security: the SECURE default is fail-closed — privileged actions are
         # DENIED when no approver allowlist is configured (previously fell open).
         import approvals
         allowed, reason = approvals.authorize("save", {}, config={})
@@ -150,7 +150,7 @@ class TestApproverGate:
         assert "fail-closed" in reason
 
     def test_unconfigured_demo_fallopen_removed_via_config(self):
-        # Read-only v1 / CSR LOW: the demo fall-open switch was removed entirely.
+        # The demo fall-open switch was removed entirely.
         # Setting it in config has no effect — privileged stays fail-closed.
         import approvals
         allowed, reason = approvals.authorize(

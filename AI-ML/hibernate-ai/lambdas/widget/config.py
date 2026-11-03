@@ -7,7 +7,7 @@ partition key ``__config__`` (following the existing ``__rules__`` / ``__snooze_
 ``__retry__`` convention). This module is the ONE place that reads/writes it, so
 callers never scatter ``get_item`` calls.
 
-Design rules (see CREW_IMPLEMENTATION_SPEC.md "Shared conventions"):
+Design rules (shared conventions):
   * Backward compatible: a MISSING config key falls back to today's behavior. An empty
     or absent ``__config__`` item MUST leave the tool behaving exactly as before this
     change (e.g. grouping by ``project_name``, no deny-list, no threshold gate).
@@ -26,8 +26,8 @@ The config document is a flat dict, e.g.::
       "cost_threshold_monthly_usd": 500.0,     # 0/absent => gate disabled
       "prod_ou_ids": ["ou-abcd-prod01"],       # accounts here are recommend-only
       "approvers": ["arn:aws:sso:::group/prod-approvers"],
-      "grouping_tag_keys": ["project_name"],   # used by Subagent B
-      "environment_tag_keys": ["environment"], # used by Subagent B
+      "grouping_tag_keys": ["project_name"],
+      "environment_tag_keys": ["environment"],
       "iac_managed_policy": "stop_start"       # stop_start | opt_in | terminate
     }
 """
@@ -53,7 +53,7 @@ _DEFAULTS = {
     #   "stop_start" (default, reversible) | "opt_in" (skip unless explicitly allowed)
     #   | "terminate" (legacy behavior; not recommended)
     "iac_managed_policy": "stop_start",
-    # Enabled member accounts for multi-account discovery (Subagent E). Empty => single
+    # Enabled member accounts for multi-account discovery. Empty => single
     # account / Org fallback.
     "accounts": [],
 }
@@ -119,7 +119,7 @@ def save_config(doc):
     return clean
 
 
-# ── Tag resolution (Subagent B: review #1 flexible tags, #2 dynamic grouping) ──
+# ── Tag resolution (flexible tags + dynamic grouping) ──
 def _tag_value(tags, key):
     """Case-insensitive tag lookup across the several tag shapes used in the codebase."""
     if isinstance(tags, dict):

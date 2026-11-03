@@ -1,3 +1,5 @@
+> This is sample code, for non-production usage. You should work with your security and legal teams to meet your organizational security, regulatory and compliance requirements before deployment.
+
 # HibernateAI — Intelligent Resource Lifecycle Management
 
 An Amazon CloudWatch Dashboard custom widget that uses Amazon Bedrock to analyze resource usage

@@ -39,14 +39,14 @@ class TestAuthz:
         assert approvals.is_privileged("restore")
 
     def test_authorize_denies_when_no_allowlist(self):
-        # CSR remediation: fail-closed by default — no allowlist means privileged denied.
+        # Fail-closed by default — no allowlist means privileged denied.
         import approvals
 
         allowed, _ = approvals.authorize("save", {}, config={"approvers": []})
         assert not allowed
 
     def test_authorize_unconfigured_always_fails_closed(self):
-        # Read-only v1 / CSR LOW: the demo fall-open switch was removed. No allowlist =>
+        # The demo fall-open switch was removed. No allowlist =>
         # privileged actions are DENIED, with no opt-in to relax it.
         import approvals, os
 

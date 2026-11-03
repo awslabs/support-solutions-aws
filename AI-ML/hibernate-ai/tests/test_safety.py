@@ -1,6 +1,6 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: MIT-0
-"""Unit tests for the defense-in-depth safety logic (review #3, #9) — no AWS needed."""
+"""Unit tests for the defense-in-depth safety logic — no AWS needed."""
 import pytest
 
 import safety

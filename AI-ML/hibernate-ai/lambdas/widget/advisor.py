@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 _cw = boto3.client("cloudwatch")
 _bedrock = boto3.client("bedrock-runtime")
 
-# Review round-2 #6: metrics lookback window is configurable (was hardcoded 7).
+# Metrics lookback window is configurable.
 # Short windows can skew idle detection on bursty workloads; 15 days is a safer
 # default. Override via METRICS_LOOKBACK_DAYS env var. Clamped to a sane 1..90 range.
 def _metrics_lookback_days():
@@ -31,7 +31,7 @@ _DEFAULT_FALLBACKS = [
 ]
 # Bedrock error codes that should trigger a fallback to the next model.
 # These are TRANSIENT / availability conditions where trying another model is sensible.
-# Review round-2 #3: AccessDeniedException and ValidationException are deliberately
+# AccessDeniedException and ValidationException are deliberately
 # NOT here — they indicate a genuine config/permission bug (missing IAM, malformed
 # request/prompt) that every model would hit identically. Falling through would mask
 # the real cause and surface a misleading "all models failed". They now return the

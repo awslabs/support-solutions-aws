@@ -95,7 +95,7 @@ class TestLeastPrivilege:
 
 
     def test_role_cannot_tag_existing_resources(self, template_json):
-        """External-enrollment (CSR HIGH): the role must NOT be able to tag pre-existing
+        """External-enrollment: the role must NOT be able to tag pre-existing
         resources (which would let it self-enroll HibernateAI=true and then destroy them).
         Any ec2:CreateTags Allow must be gated by ec2:CreateAction (create-time only), and
         there must be NO rds:AddTagsToResource Allow at all."""

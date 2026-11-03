@@ -130,7 +130,7 @@ def _has_schedule(display_name):
         return False
 
 
-# ── Tag auto-detection (Subagent B: review #1) ──────────────────────────────
+# ── Tag auto-detection ──────────────────────────────
 # Common customer tag keys we can adopt instead of forcing our own convention.
 COMMON_GROUPING_KEYS = ["project_name", "Project", "project", "App_name", "app",
                         "application", "asset_id", "service", "cost_center", "CostCenter",

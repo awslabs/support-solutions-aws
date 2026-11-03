@@ -1,6 +1,6 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: MIT-0
-"""Tests for flexible tags + dynamic grouping (review #1, #2)."""
+"""Tests for flexible tags + dynamic grouping."""
 import pytest
 
 import config as hib_config

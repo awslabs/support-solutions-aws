@@ -1,6 +1,6 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: MIT-0
-"""Tests for multi-account automation (review #6)."""
+"""Tests for multi-account automation."""
 import pytest
 
 import config as hib_config
