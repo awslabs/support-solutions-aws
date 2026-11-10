@@ -35,7 +35,7 @@ setup(
     ],
     extras_require={
         "yaml": ["pyyaml==6.0.2"],
-        "agentcore": ["strands-agents==0.1.5"],
+        "agentcore": ["strands-agents==1.48.0"],
         # MCP server delivery channel (Kiro / Claude Code / Cursor / Q Developer)
         "mcp": ["mcp>=1.2.0"],
     },
