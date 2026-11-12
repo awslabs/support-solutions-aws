@@ -1,0 +1,36 @@
+.venv/
+venv/
+__pycache__/
+*.pyc
+.env
+*.log
+.DS_Store
+.idea/
+.vscode/
+dist/
+build/
+*.egg-info/
+
+# Test artifacts
+.coverage
+.hypothesis/
+.pytest_cache/
+htmlcov/
+
+# SAM build
+.aws-sam/
+
+# Local test cases (may contain account-specific information)
+test-cases/
+
+# Local design notes
+design/
+# IDE / assistant
+.claude/
+.kiro/
+# Workshop bundle staging (obsolete now that we push via git)
+workshop-build-*.zip
+
+# Workshop Studio asset bundle (built from workshop/pack-guidance.sh,
+# uploaded to s3://ws-assets-us-east-1/9e6e5f29-.../ — see script header)
+guidance-for-gpu-capacity-planning-on-aws.zip

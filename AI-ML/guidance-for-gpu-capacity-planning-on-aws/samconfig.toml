@@ -1,0 +1,16 @@
+# SAM deployment configuration
+# Run: sam deploy (no --guided needed)
+
+version = 0.1
+
+[default.deploy.parameters]
+stack_name = "gpu-capacity-agent"
+region = "us-west-2"
+resolve_s3 = true
+s3_prefix = "gpu-capacity-agent"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
+parameter_overrides = "BedrockModelId=\"us.anthropic.claude-haiku-4-5-20251001-v1:0\" AllowedBedrockModelIds=\"us.anthropic.claude-haiku-4-5-20251001-v1:0,us.anthropic.claude-sonnet-4-5-20250929-v1:0,us.amazon.nova-pro-v1:0,us.amazon.nova-lite-v1:0,us.amazon.nova-micro-v1:0\" BedrockRegion=\"us-west-2\" ReservedConcurrency=\"50\" LogEncryptionKeyArn=\"\" AlarmNotificationTopicArn=\"arn:aws:sns:us-east-1:123456789012:gpu-capacity-agent-alarms\" AuthMethod=\"API_KEY\""
+
+[default.build.parameters]
+use_container = false
