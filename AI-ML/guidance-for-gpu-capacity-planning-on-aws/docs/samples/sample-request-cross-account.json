@@ -1,0 +1,8 @@
+{
+  "query": "For our customer running in us-east-1, assess 30 ml.g5.4xlarge for real-time inference. Confirm no recent capacity errors.",
+  "customer_context": {
+    "role_arn": "arn:aws:iam::111122223333:role/CapacityAgentReadOnly",
+    "external_id": "shared-secret-example",
+    "session_name": "planner-jane-doe-2026-07-08"
+  }
+}

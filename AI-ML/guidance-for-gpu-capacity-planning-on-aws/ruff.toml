@@ -1,0 +1,8 @@
+# Ruff configuration — committed so lint results are deterministic in CI,
+# independent of the locally-installed Ruff version or any user-level config.
+# The Ruff version itself is pinned in requirements-dev.txt and .github/workflows/ci.yml.
+target-version = "py313"
+
+[lint]
+# Ruff's default rule set: pycodestyle errors (E4/E7/E9) + Pyflakes (F).
+select = ["E4", "E7", "E9", "F"]

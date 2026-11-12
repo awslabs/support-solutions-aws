@@ -1,0 +1,19 @@
+# cfn-lint configuration.
+#
+# E3003 is suppressed because cfn-lint cannot resolve the ``!If``
+# wrapping ``FunctionUrlConfig`` on ``CapacityAgentFunction``. SAM
+# expands that config into an implicit ``CapacityAgentFunctionUrl``
+# (an ``AWS::Lambda::Url`` resource) whose ``AuthType`` is set inside
+# the True branch of the !If (``AuthType: AWS_IAM``). Because cfn-lint
+# only evaluates the source template (not the SAM transform's output),
+# it sees ``Properties`` as a conditional expression rather than a map
+# and reports ``AuthType is required``. ``sam validate`` without
+# ``--lint`` confirms the template is structurally valid.
+#
+# Verified 2026-07-10 during pre-launch hardening. Do not remove this
+# suppression without first restructuring the
+# Function URL wiring so ``AuthType`` is a top-level, unconditional
+# property.
+
+ignore_checks:
+  - E3003

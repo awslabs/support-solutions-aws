@@ -1,0 +1,195 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+#
+# Draft reference architecture, AWS Diagram-as-Code format
+# (https://github.com/awslabs/diagram-as-code). Render with: awsdac architecture-draft.dac.yaml
+#
+# This is a layout draft for iteration. The authoritative diagram is the official
+# Guidance template guidance-architecture.pptx, rendered to
+# assets/images/guidance-architecture.png. The AWS Price List API and AWS Service
+# Quotas are additional read-only tool targets (see step 4); they are not drawn as
+# separate icons in this draft to keep the tool row readable.
+Diagram:
+  DefinitionFiles:
+    - Type: URL
+      Url: "https://raw.githubusercontent.com/awslabs/diagram-as-code/main/definitions/definition-for-aws-icons-light.yaml"
+  Resources:
+    Canvas:
+      Type: AWS::Diagram::Canvas
+      Direction: vertical
+      Children:
+        - AWSCloud
+        - Subscriber
+    Subscriber:
+      Type: AWS::Diagram::Resource
+      Preset: User
+      Title: "ML infrastructure engineer"
+    AWSCloud:
+      Type: AWS::Diagram::Cloud
+      Preset: AWSCloudNoLogo
+      Direction: horizontal
+      Align: top
+      Children:
+        - DeployAccount
+        - CustomerAccount
+    DeployAccount:
+      Type: AWS::Diagram::Resource
+      Preset: Account
+      Title: "Deploy account (hub)"
+      Direction: vertical
+      Align: left
+      Children:
+        - Row1
+        - ToolRow
+        - DataRow
+    Row1:
+      Type: AWS::Diagram::HorizontalStack
+      Children:
+        - ApiGateway
+        - Collector
+        - Bedrock
+    ApiGateway:
+      Type: AWS::ApiGateway
+      Title: "1 API Gateway (AWS WAF)"
+    Collector:
+      Type: AWS::Lambda::Function
+      Title: "2 Agent (Lambda)"
+    Bedrock:
+      # No dedicated Bedrock icon in the awsdac light-icon definition, so the
+      # draft uses a plain titled box. The authoritative PPT diagram uses the
+      # official Amazon Bedrock icon.
+      Type: AWS::Diagram::Resource
+      Title: "3 Amazon Bedrock"
+    ToolRow:
+      Type: AWS::Diagram::HorizontalStack
+      Children:
+        - Ec2
+        - CloudTrail
+        - Metrics
+        - SageMaker
+    Ec2:
+      Type: AWS::EC2
+      Title: "4 Amazon EC2"
+    CloudTrail:
+      Type: AWS::CloudTrail
+      Title: "4 AWS CloudTrail"
+    Metrics:
+      Type: AWS::CloudWatch
+      Title: "4/8 Amazon CloudWatch"
+    SageMaker:
+      Type: AWS::SageMaker
+      Title: "4 Amazon SageMaker AI"
+    DataRow:
+      Type: AWS::Diagram::HorizontalStack
+      Children:
+        - Cache
+        - Dlq
+        - DlqAlarm
+        - Topic
+    Cache:
+      Type: AWS::DynamoDB::Table
+      Title: "5 DynamoDB cache"
+    Dlq:
+      Type: AWS::SQS::Queue
+      Title: "8 SQS dead-letter queue"
+    DlqAlarm:
+      Type: AWS::CloudWatch::Alarm
+      Title: "8 CloudWatch alarm"
+    Topic:
+      Type: AWS::SNS::Topic
+      Title: "8 SNS topic"
+    CustomerAccount:
+      Type: AWS::Diagram::Resource
+      Preset: Account
+      Title: "Customer account (optional, cross-account mode)"
+      Direction: vertical
+      Children:
+        - SpokeRole
+        - CustomerWorkloads
+    SpokeRole:
+      Type: AWS::IAM::Role
+      Title: "6 Read-only spoke IAM role"
+    CustomerWorkloads:
+      Type: AWS::SageMaker
+      Title: "6 Customer GPU workloads"
+  Links:
+    - Source: ApiGateway
+      SourcePosition: E
+      Target: Collector
+      TargetPosition: W
+      TargetArrowHead:
+        Type: Open
+    - Source: Collector
+      SourcePosition: E
+      Target: Bedrock
+      TargetPosition: W
+      TargetArrowHead:
+        Type: Open
+    - Source: Collector
+      SourcePosition: S
+      Target: Ec2
+      TargetPosition: N
+      Type: orthogonal
+      TargetArrowHead:
+        Type: Open
+    - Source: Collector
+      SourcePosition: S
+      Target: CloudTrail
+      TargetPosition: N
+      Type: orthogonal
+      TargetArrowHead:
+        Type: Open
+    - Source: Collector
+      SourcePosition: S
+      Target: Metrics
+      TargetPosition: N
+      Type: orthogonal
+      TargetArrowHead:
+        Type: Open
+    - Source: Collector
+      SourcePosition: S
+      Target: SageMaker
+      TargetPosition: N
+      Type: orthogonal
+      TargetArrowHead:
+        Type: Open
+    - Source: Collector
+      SourcePosition: S
+      Target: Cache
+      TargetPosition: N
+      Type: orthogonal
+      TargetArrowHead:
+        Type: Open
+    - Source: Collector
+      SourcePosition: E
+      Target: SpokeRole
+      TargetPosition: W
+      Type: orthogonal
+      TargetArrowHead:
+        Type: Open
+    - Source: SpokeRole
+      SourcePosition: S
+      Target: CustomerWorkloads
+      TargetPosition: N
+      TargetArrowHead:
+        Type: Open
+    - Source: Dlq
+      SourcePosition: E
+      Target: DlqAlarm
+      TargetPosition: W
+      TargetArrowHead:
+        Type: Open
+    - Source: DlqAlarm
+      SourcePosition: E
+      Target: Topic
+      TargetPosition: W
+      Type: orthogonal
+      TargetArrowHead:
+        Type: Open
+    - Source: Topic
+      SourcePosition: SSE
+      Target: Subscriber
+      TargetPosition: N
+      Type: orthogonal
+      TargetArrowHead:
+        Type: Open

@@ -1,0 +1,92 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+
+# Customer-side companion stack for GPU Capacity Planning Agent —
+# deploys CloudWatch Logs metric filters that convert the customer's
+# CloudTrail data-plane errors into precise CloudWatch metrics. This is
+# the supplemental fix for the F2 CloudTrail LookupEvents limitation:
+# LookupEvents does not accept errorCode as a filter attribute, so on an
+# active fleet the tool's paging budget can be dominated by successful
+# events. Metric filters give you a precise, retrospective count that
+# the agent's tool cannot compute from raw LookupEvents alone.
+#
+# Deploy this stack in the CUSTOMER'S account, in each region they care
+# about. The metrics it produces (namespace GPUCapacityAgent/CustomerICE)
+# are read by the agent's get_ice_metrics tool as the primary ICE
+# signal.
+#
+# This stack is INDEPENDENT of the main agent stack — customers who
+# cannot install anything in their account fall back to the agent's
+# built-in CloudTrail LookupEvents scan (which is still correct at low
+# volume, per the ``ice_signal_unavailable`` cap in the deterministic
+# scorer).
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Emits CloudWatch metric filters (namespace GPUCapacityAgent/CustomerICE)
+  from the customer's CloudTrail-to-CloudWatch-Logs log group so the
+  agent's get_ice_metrics tool has a precise ICE signal. Covers EC2
+  RunInstances and SageMaker CreateEndpoint/UpdateEndpoint capacity
+  errors. See leading YAML comment for full context.
+
+Parameters:
+  CloudTrailLogGroupName:
+    Type: String
+    Description: >
+      Name of the CloudWatch Logs log group where the customer's
+      CloudTrail delivers management-event records
+      (e.g. ``CloudTrail/DefaultLogGroup``). Must already exist —
+      Trail-to-CloudWatch-Logs delivery is a customer-side configuration
+      this stack does not create.
+
+Resources:
+  # EC2 InsufficientInstanceCapacity metric filter — for self-managed EC2,
+  # EKS on EC2, and Karpenter data-plane failures. Captures both
+  # Client.* and Server.* prefix variants that RunInstances emits.
+  Ec2InsufficientCapacityMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref CloudTrailLogGroupName
+      # JSON filter matches the CloudTrail event payload directly.
+      FilterPattern: '{ ($.eventName = "RunInstances") && ($.errorCode = "*InsufficientInstanceCapacity*" || $.errorCode = "*InsufficientHostCapacity*") }'
+      MetricTransformations:
+        - MetricNamespace: GPUCapacityAgent/CustomerICE
+          MetricName: EC2CapacityErrors
+          MetricValue: "1"
+          Unit: Count
+          # CloudWatch MetricFilter rejects DefaultValue when Dimensions
+          # is set (mutually exclusive). Dimensions win here — the
+          # agent's get_ice_metrics tool queries by InstanceType so the
+          # per-type dimension is required for the signal to bind to
+          # the right instance type.
+          Dimensions:
+            - Key: InstanceType
+              Value: "$.requestParameters.instanceType"
+
+  # SageMaker CreateEndpoint / UpdateEndpoint capacity failures. Captures
+  # the ResourceLimitExceeded / CapacityError family. Instance type in
+  # these payloads is nested under productionVariants; the dimension
+  # below is best-effort.
+  SageMakerCapacityErrorsCreateEndpoint:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref CloudTrailLogGroupName
+      FilterPattern: '{ ($.eventSource = "sagemaker.amazonaws.com") && ($.eventName = "CreateEndpoint" || $.eventName = "UpdateEndpoint" || $.eventName = "UpdateEndpointWeightsAndCapacities") && ($.errorCode = "*ResourceLimitExceeded*" || $.errorCode = "*CapacityError*" || $.errorCode = "*CapacityNotAvailable*") }'
+      MetricTransformations:
+        - MetricNamespace: GPUCapacityAgent/CustomerICE
+          MetricName: SageMakerCapacityErrors
+          MetricValue: "1"
+          Unit: Count
+          DefaultValue: 0
+
+Outputs:
+  MetricNamespace:
+    Description: >
+      CloudWatch metrics namespace where filtered events surface. Query
+      via GetMetricStatistics or use in a CloudWatch dashboard.
+    Value: GPUCapacityAgent/CustomerICE
+  Ec2MetricFilterName:
+    Description: Name of the EC2 capacity-error metric filter (for audit).
+    Value: !Ref Ec2InsufficientCapacityMetricFilter
+  SageMakerMetricFilterName:
+    Description: Name of the SageMaker capacity-error metric filter (for audit).
+    Value: !Ref SageMakerCapacityErrorsCreateEndpoint

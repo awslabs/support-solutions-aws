@@ -1,0 +1,1683 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Guidance for AI-Powered GPU Capacity Planning on Amazon SageMaker
+  Deploys a Lambda function that runs the capacity planning agent using
+  OpenAI models on Amazon Bedrock.
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Model Configuration
+        Parameters:
+          - BedrockModelId
+          - AllowedBedrockModelIds
+          - BedrockRegion
+      - Label:
+          default: Scaling and Reliability
+        Parameters:
+          - ReservedConcurrency
+      - Label:
+          default: Security and Encryption
+        Parameters:
+          - LogEncryptionKeyArn
+          - AuthMethod
+      - Label:
+          default: Observability
+        Parameters:
+          - AlarmNotificationTopicArn
+      - Label:
+          default: WAF Protection
+        Parameters:
+          - WafRateLimit
+          - GeoBlockCountries
+      - Label:
+          default: Lambda Function URL (long-running queries, WAF-bypassing)
+        Parameters:
+          - EnableFunctionUrl
+      - Label:
+          default: Cross-Account Access
+        Parameters:
+          - AllowedCustomerRoleArnPattern
+          - RequireExternalId
+      - Label:
+          default: Bedrock Guardrails (prompt-injection & content filtering)
+        Parameters:
+          - BedrockGuardrailId
+          - BedrockGuardrailVersion
+      - Label:
+          default: Bedrock IAM Scope
+        Parameters:
+          - BedrockInvokeScope
+      - Label:
+          default: Bedrock Spend Guardrails
+        Parameters:
+          - BedrockTokenAlarmThreshold
+      - Label:
+          default: Log Retention
+        Parameters:
+          - LogRetentionDays
+    ParameterLabels:
+      BedrockModelId:
+        default: Default Bedrock Model ID
+      AllowedBedrockModelIds:
+        default: Allowed Bedrock Model IDs (per-request override allowlist)
+      BedrockRegion:
+        default: AWS Region for Bedrock
+      ReservedConcurrency:
+        default: Reserved Concurrent Executions
+      LogEncryptionKeyArn:
+        default: Log Encryption KMS Key ARN
+      AlarmNotificationTopicArn:
+        default: Alarm Notification SNS Topic ARN
+      AuthMethod:
+        default: Authentication Method
+      WafRateLimit:
+        default: WAF Rate Limit (requests per 5 minutes)
+      GeoBlockCountries:
+        default: Geo-Block Country Codes
+      EnableFunctionUrl:
+        default: Enable Lambda Function URL (bypasses WAF)
+      AllowedCustomerRoleArnPattern:
+        default: Allowed Customer Role ARN Pattern (sts:AssumeRole)
+      RequireExternalId:
+        default: Require ExternalId on customer_context
+      BedrockGuardrailId:
+        default: Bedrock Guardrail Identifier
+      BedrockGuardrailVersion:
+        default: Bedrock Guardrail Version
+      BedrockInvokeScope:
+        default: Bedrock IAM Resource Scope
+      BedrockTokenAlarmThreshold:
+        default: Bedrock Token Spend Alarm Threshold (per 5 min)
+      LogRetentionDays:
+        default: CloudWatch Log Group Retention (days)
+
+Parameters:
+  BedrockModelId:
+    Type: String
+    Default: us.anthropic.claude-haiku-4-5-20251001-v1:0
+    Description: >
+      DEFAULT Bedrock model ID or inference-profile ID (used when the
+      request body omits the ``model_id`` field). Default is Anthropic
+      Claude Haiku 4.5 via the US cross-region inference profile
+      (fastest and cheapest current-generation Anthropic model at
+      $1/M input, $5/M output, GA in every us-* region — 4-5x cheaper
+      than Sonnet 4.5 and lands the p99 latency well inside the API
+      Gateway 29s ceiling). Callers can request a stronger model per
+      query by passing ``"model_id": "..."`` in the request body,
+      constrained to the ``AllowedBedrockModelIds`` allowlist — see
+      docs/implementation-guide.md "Model Selection Guide".
+      Any Bedrock model supporting the Converse API with tool_use works.
+  AllowedBedrockModelIds:
+    Type: String
+    Default: "us.anthropic.claude-haiku-4-5-20251001-v1:0,us.anthropic.claude-sonnet-4-5-20250929-v1:0,us.amazon.nova-pro-v1:0,us.amazon.nova-lite-v1:0,us.amazon.nova-micro-v1:0"
+    Description: >
+      Comma-separated allowlist of Bedrock model IDs the agent may invoke
+      when a request supplies a ``model_id`` field in its JSON body.
+      The default (Haiku 4.5, Sonnet 4.5, Nova Pro, Nova Lite, Nova Micro)
+      covers the full cost/quality spectrum:
+        - Haiku 4.5 — balanced default ($1.10/$5.50 per M, cross-region),
+          Anthropic. Strong tool-use at mid-low cost.
+        - Sonnet 4.5 — strongest tool-use reasoning ($3.30/$16.50 per M,
+          cross-region), Anthropic. Escalation tier for complex queries.
+        - Nova Pro — mid-tier Amazon-family ($0.80/$3.20 per M, no
+          cross-region premium). Useful when Anthropic Marketplace subs
+          are SCP-blocked (e.g., Workshop Studio-vended sandboxes).
+        - Nova Lite — cheap tier ($0.06/$0.24 per M). Fine for 1-2 tool
+          lookups when the caller knows the ask is simple.
+        - Nova Micro — cheapest ($0.035/$0.14 per M). Simple feasibility
+          checks only; expect weaker multi-tool reasoning.
+      Requests with a ``model_id`` NOT on this list are rejected with
+      400. Requests omitting ``model_id`` use ``BedrockModelId`` (above).
+      To lock the agent to a single model, set this to the same value as
+      ``BedrockModelId``. The default MUST be included in the allowlist —
+      the Lambda validates this at cold-start and refuses to serve
+      traffic otherwise.
+  BedrockRegion:
+    Type: String
+    Default: us-west-2
+    Description: >
+      AWS region where the Bedrock model / inference profile is available.
+      With the default US cross-region inference profile
+      (us.anthropic.claude-haiku-4-5-...), any us-* region is valid.
+  ReservedConcurrency:
+    Type: Number
+    Default: 50
+    MinValue: 1
+    MaxValue: 900
+    Description: >
+      Maximum concurrent Lambda executions. Each invocation can hold a slot
+      for up to Function.Timeout seconds (default 180 on the Function URL
+      path, 29 on the API Gateway path). Default 50 gives ~30 concurrent
+      long-running requests plus 20-slot headroom before back-pressure.
+
+      Sizing math:
+        Slot-time = ReservedConcurrency × Function.Timeout seconds.
+        At the default (50 × 180 = 9000 slot-seconds = 150 slot-minutes),
+        an attacker holding every slot for the maximum timeout can occupy
+        the function for 3 minutes before slots free up.
+
+      Trade-offs:
+        - Set LOWER (e.g. 10) to enforce back-pressure early, at the cost
+          of throttling legitimate traffic under bursts.
+        - Set HIGHER (up to 900, subject to account-level concurrent
+          execution quota) for high-throughput deployments; pair with WAF
+          rate limits and the BedrockSpendAlarm to bound cost exposure.
+        - The WAF rate limit (WafRateLimit, default 100 req / 5 min per IP)
+          is the primary DoS control on the API Gateway path; the Function
+          URL is NOT fronted by WAF (see EnableFunctionUrl description).
+    ConstraintDescription: >
+      Must be between 1 and 900. Above 900 the value may exceed the
+      account-level concurrent-execution quota; request a limit increase
+      via AWS Support before raising further.
+  LogEncryptionKeyArn:
+    Type: String
+    Default: ""
+    Description: Optional KMS key ARN for CloudWatch log encryption. Leave empty to skip.
+  AlarmNotificationTopicArn:
+    Type: String
+    Default: ""
+    Description: >
+      Optional SNS topic ARN for CloudWatch alarm notifications. If empty
+      (workshop / sandbox default), the stack creates its own SNS topic
+      and routes alarms there. If set to a real ARN, alarms route to
+      that pre-existing topic instead (production pattern where alarms
+      go to your team's existing pager).
+    AllowedPattern: "^$|arn:aws:sns:[a-z0-9-]+:[0-9]{12}:[a-zA-Z0-9_-]+"
+    ConstraintDescription: >
+      Must be empty (stack self-provisions) OR a valid SNS topic ARN
+      (e.g., arn:aws:sns:us-east-1:123456789012:my-topic).
+  AuthMethod:
+    Type: String
+    Default: IAM
+    AllowedValues:
+      - IAM
+      - API_KEY
+    Description: >
+      Authentication method for the /plan endpoint. IAM (default) or
+      API_KEY. Cognito was removed pending a proper implementation
+      — the previous template listed
+      COGNITO as an option but the standalone authorizer was
+      orphaned, producing an API with no auth on /plan. Deployments
+      needing OIDC-based auth should front the API Gateway with
+      CloudFront + Cognito or attach a custom Lambda authorizer at
+      the method level.
+  WafRateLimit:
+    Type: Number
+    Default: 100
+    MinValue: 10
+    MaxValue: 10000
+    Description: Maximum requests per 5-minute window per source IP before WAF rate-limiting blocks the IP.
+  GeoBlockCountries:
+    Type: String
+    Default: ""
+    Description: Comma-separated ISO 3166-1 alpha-2 country codes to block (e.g., "CN,RU,KP"). Leave empty to disable geo-blocking.
+  EnableFunctionUrl:
+    Type: String
+    Default: "false"
+    AllowedValues:
+      - "true"
+      - "false"
+    Description: >
+      Enable the Lambda Function URL for long-running queries (up to 180s).
+      IMPORTANT: The Function URL is AWS_IAM auth ONLY — WAF does NOT front
+      Lambda Function URLs. Callers with lambda:InvokeFunctionUrl bypass the
+      rate limit, geo-block, and AWS managed rule sets that protect the API
+      Gateway endpoint. Enable ONLY when your IAM policies are the sole
+      trust boundary you need, or when you front the URL with CloudFront +
+      regional WAF. Default: false (disabled).
+  AllowedCustomerRoleArnPattern:
+    Type: String
+    Default: ""
+    AllowedPattern: "^$|^arn:aws(-us-gov|-cn|-iso|-iso-b)?:iam::(\\*|\\d{12}):role/[\\w+=,.@\\-_/*]{1,64}$"
+    ConstraintDescription: >
+      Must be empty (disables cross-account) or a valid IAM role ARN
+      pattern. The account portion may be wildcarded (*) but the role
+      path is bounded to IAM's actual 64-character limit. Supports
+      commercial, GovCloud, China, and ISO partitions.
+    Description: >
+      Optional. IAM role ARN pattern the Lambda execution role is
+      permitted to assume via sts:AssumeRole for cross-account access to
+      customer environments. Prefer a specific role name (e.g.
+      arn:aws:iam::*:role/CapacityAgentReadOnly) over wildcarding the
+      role name. Leave empty to disable cross-account (requests with
+      customer_context will fail at AssumeRole).
+      The AllowedPattern above prevents
+      a misconfigured deployer from setting arn:aws:iam::*:role/*
+      (which would grant sts:AssumeRole on every role in every account
+      whose trust policy permits it).
+  AllowedCorsOrigin:
+    Type: String
+    Default: ""
+    Description: >
+      Value for the Access-Control-Allow-Origin response header on every
+      response. Default is empty, which SUPPRESSES the CORS header entirely.
+      Browsers will reject cross-origin requests; same-origin and
+      SigV4-signed API calls still succeed. This is the secure default
+      for a public reference implementation.
+      For browser-facing deployments, restrict this to your specific
+      frontend origin (e.g. "https://console.example.com") to permit
+      cross-origin requests only from that origin. Use "*" (literal
+      wildcard string) ONLY for local development or publicly readable
+      APIs where any origin is intentionally permitted. The security
+      headers (HSTS, X-Content-Type-Options, Referrer-Policy) are always
+      emitted regardless of this setting.
+  RequireExternalId:
+    Type: String
+    Default: "true"
+    AllowedValues:
+      - "true"
+      - "false"
+    Description: >
+      When cross-account access is enabled (AllowedCustomerRoleArnPattern set),
+      require every customer_context block on the request to include a
+      non-empty external_id. This is the standard defense against the AWS
+      confused-deputy pattern for third-party access. Default: true.
+      Set to "false" ONLY for internal deploys where you fully control both
+      sides of the trust boundary and don't need per-tenant ExternalId
+      rotation.
+  BedrockGuardrailId:
+    Type: String
+    Default: ""
+    Description: >
+      Optional. ID of an Amazon Bedrock Guardrail (e.g. abc12def34gh) applied
+      to every Converse call for prompt-injection / content / sensitive-info
+      filtering. Create the guardrail out-of-band (Bedrock console or a
+      separate stack), then pass its ID here. Leave empty to disable
+      server-side guardrails. Recommended for any internet-exposed deployment.
+    AllowedPattern: "^$|^[a-z0-9]{6,20}$"
+    ConstraintDescription: >
+      Must be empty or a valid Bedrock Guardrail ID (lowercase alphanumerics,
+      6-20 characters).
+  BedrockGuardrailVersion:
+    Type: String
+    Default: "DRAFT"
+    Description: >
+      Bedrock Guardrail version to enforce. Use "DRAFT" while iterating and a
+      numeric published version (e.g. "1", "2") in production. Ignored when
+      BedrockGuardrailId is empty.
+    AllowedPattern: "^(DRAFT|[0-9]{1,4})$"
+    ConstraintDescription: Must be "DRAFT" or a numeric version.
+  BedrockTokenAlarmThreshold:
+    Type: Number
+    Default: 1000000
+    MinValue: 10000
+    Description: >
+      Total Bedrock tokens (input + output, summed across all invocations)
+      per 5-minute window that trips the BedrockSpendAlarm. Default 1M tokens
+      per 5 min ~ $12-60 depending on model tier. Tune based on your
+      expected steady-state load. See docs/implementation-guide.md
+      "Monitor and Optimize" for how the CloudWatch Logs metric filter
+      extracts this value from the usage_tracking log.
+  LogRetentionDays:
+    Type: Number
+    Default: 90
+    AllowedValues:
+      # CloudWatch Logs only accepts a fixed list of retention values.
+      - 1
+      - 3
+      - 5
+      - 7
+      - 14
+      - 30
+      - 60
+      - 90
+      - 120
+      - 150
+      - 180
+      - 365
+      - 400
+      - 545
+      - 731
+      - 1096
+      - 1827
+      - 2192
+      - 2557
+      - 2922
+      - 3288
+      - 3653
+    Description: >
+      Retention (in days) for the Lambda function's CloudWatch log group.
+      Default 90 balances audit needs against storage cost. Regulated
+      workloads (FedRAMP High, ITAR, PCI-DSS) typically require 400+; set
+      to 400/545/731/1096/etc. to match your compliance framework.
+      Must be one of CloudWatch Logs' supported retention values (see
+      AllowedValues).
+  BedrockInvokeScope:
+    Type: String
+    Default: RegionPinned
+    AllowedValues:
+      - RegionPinned
+      - Broad
+    Description: >
+      IAM scope for bedrock:InvokeModel. "RegionPinned" (default) restricts the
+      Lambda to invoking foundation models and inference profiles in the
+      BedrockRegion + this stack's account only — recommended for production
+      and Solutions Library submissions. "Broad" grants the previous wildcard
+      (any region, any model) and is only appropriate for exploratory / dev
+      deploys where you plan to swap BedrockModelId frequently across
+      regions in the same stack.
+      IMPORTANT: When using a cross-region inference profile (e.g. a
+      BedrockModelId starting with us./eu./apac.), the profile routes to
+      foundation models in every region it spans, so RegionPinned actually
+      grants foundation-model access across those regions — see
+      docs/implementation-guide.md \"IAM Setup\" for the derived ARNs.
+
+Conditions:
+  HasLogEncryptionKey: !Not [!Equals [!Ref LogEncryptionKeyArn, ""]]
+  IsIAMAuth: !Equals [!Ref AuthMethod, "IAM"]
+  IsAPIKeyAuth: !Equals [!Ref AuthMethod, "API_KEY"]
+  HasExternalAlarmTopic: !Not [!Equals [!Ref AlarmNotificationTopicArn, ""]]
+  HasNoExternalAlarmTopic: !Equals [!Ref AlarmNotificationTopicArn, ""]
+  IsGeoBlockEnabled: !Not [!Equals [!Ref GeoBlockCountries, ""]]
+  HasCrossAccountAccess: !Not [!Equals [!Ref AllowedCustomerRoleArnPattern, ""]]
+  HasGuardrail: !Not [!Equals [!Ref BedrockGuardrailId, ""]]
+  FunctionUrlEnabled: !Equals [!Ref EnableFunctionUrl, "true"]
+  BedrockInvokeRegionPinned: !Equals [!Ref BedrockInvokeScope, "RegionPinned"]
+
+Globals:
+  Function:
+    Timeout: 120
+    MemorySize: 512
+    Runtime: python3.13
+
+Resources:
+  CapacityAgentApi:
+    Type: AWS::Serverless::Api
+    #checkov:skip=CKV_AWS_120:API response caching is intentionally disabled; caching capacity-risk verdicts would serve stale risk data to callers.
+    # cfn-lint E3003 flags the SAM-transformed OpenAPI Body as missing
+    # AuthType on the auto-generated security definition for the
+    # AWS_IAM DefaultAuthorizer. AuthType is not required for SigV4
+    # authorization (AWS::ApiGateway::Authorizer resources only need it
+    # for TOKEN / REQUEST / COGNITO_USER_POOLS types). `sam validate`
+    # without --lint confirms the template is structurally valid. The
+    # suppression here is scoped to this one resource with an explicit
+    # reason so it remains reviewable.
+    Metadata:
+      cfn-lint:
+        config:
+          ignore_checks:
+            - E3003
+    Properties:
+      StageName: Prod
+      # X-Ray tracing on the API stage (Checkov CKV_AWS_73).
+      TracingEnabled: true
+      Auth:
+        # Supports IAM and API_KEY only.
+        # Cognito auth was previously listed as an option but was never
+        # actually wired to the API — the standalone
+        # AWS::ApiGateway::Authorizer resource was orphaned, so
+        # AuthMethod=COGNITO deploys had no auth on /plan. A proper
+        # Cognito implementation requires either two conditional API
+        # resources or a per-event Auth override; both are out of
+        # scope for the security-review fix pass. Cognito support has
+        # been removed from AuthMethod pending a follow-up
+        # implementation. Deployments needing OIDC-based auth should
+        # front the API Gateway with CloudFront + Cognito or attach a
+        # custom Lambda authorizer at the method level.
+        DefaultAuthorizer: !If [IsIAMAuth, AWS_IAM, !Ref "AWS::NoValue"]
+        ApiKeyRequired: !If [IsAPIKeyAuth, true, false]
+      MethodSettings:
+        - HttpMethod: "*"
+          ResourcePath: "/*"
+          ThrottlingBurstLimit: 10
+          ThrottlingRateLimit: 5
+      # Access logging (Checkov CKV_AWS_76). Every /plan request lands
+      # a structured JSON line in ApiAccessLogGroup. Enabled by default
+      # because access logs are the single most useful debugging tool
+      # when an attendee's query fails during a workshop and because
+      # the guidance's production-posture story leans on "observability
+      # on day one".
+      #
+      # NOTE: for these logs to actually flow, the deploying account
+      # must have API Gateway configured to push to CloudWatch Logs
+      # (AWS::ApiGateway::Account with a service-linked role or
+      # equivalent). Workshop Studio-vended sandboxes typically already
+      # have this set at the account level; if not, the AccessLogSetting
+      # here is inert but harmless — the API still deploys successfully
+      # and the /plan endpoint works.
+      AccessLogSetting:
+        DestinationArn: !GetAtt ApiAccessLogGroup.Arn
+        Format: '{"requestId":"$context.requestId","ip":"$context.identity.sourceIp","caller":"$context.identity.caller","user":"$context.identity.user","requestTime":"$context.requestTime","httpMethod":"$context.httpMethod","resourcePath":"$context.resourcePath","status":"$context.status","protocol":"$context.protocol","responseLength":"$context.responseLength"}'
+
+  # CloudWatch Logs destination for the API Gateway access logs.
+  # Retention matches the agent's function logs (30 days) — see the
+  # LogGroupRetentionDays parameter usage elsewhere in this template.
+  ApiAccessLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/apigateway/${AWS::StackName}-access
+      RetentionInDays: 30
+      KmsKeyId: !If
+        - HasLogEncryptionKey
+        - !Ref LogEncryptionKeyArn
+        - !Ref AWS::NoValue
+
+  AgentDLQ:
+    Type: AWS::SQS::Queue
+    #checkov:skip=CKV_AWS_27:SSE-SQS (SqsManagedSseEnabled) encrypts this dead-letter queue with an AWS-managed key; a customer-managed KMS key is unnecessary for an operational DLQ that holds no customer data.
+    Properties:
+      MessageRetentionPeriod: 1209600
+      SqsManagedSseEnabled: true
+
+  AgentSecret:
+    Type: AWS::SecretsManager::Secret
+    #checkov:skip=CKV_AWS_149:Encrypted at rest with the AWS-managed Secrets Manager key; the secret ships empty ({}) and holds no sensitive data by default, so a customer-managed KMS key is not warranted.
+    Properties:
+      Description: >
+        Sensitive configuration values for the Capacity Planning Agent.
+        Ships EMPTY (``{}``) so the Lambda serves traffic immediately
+        after deploy. The Lambda code path does not read any specific
+        keys from this secret today, but the resource is provisioned so
+        operators can add sensitive config later (via ``aws
+        secretsmanager update-secret --secret-id ... --secret-string
+        '{...}'``) without a template redeploy.
+
+        Emergency stop: operators can set the payload to
+        ``{"__unconfigured__": true}`` to gate the Lambda's traffic-serving
+        behavior. When the Lambda detects that sentinel at cold start it
+        returns 503 on every invocation until the sentinel is removed and
+        the execution environment is recycled. Useful during scheduled
+        maintenance or credential rotation windows.
+      SecretString: '{}'
+
+  ToolCacheTable:
+    Type: AWS::DynamoDB::Table
+    #checkov:skip=CKV_AWS_28:Point-in-time recovery is unnecessary for an ephemeral tool-result cache with a short TTL; entries are reconstructable by re-querying read-only AWS APIs.
+    #checkov:skip=CKV_AWS_119:Encrypted at rest with AWS-owned keys; the table holds only short-lived public AWS API response snapshots, so a customer-managed KMS key is not warranted.
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: cache_key
+          AttributeType: S
+      KeySchema:
+        - AttributeName: cache_key
+          KeyType: HASH
+      TimeToLiveSpecification:
+        AttributeName: expires_at
+        Enabled: true
+
+  CapacityAgentFunction:
+    Type: AWS::Serverless::Function
+    #checkov:skip=CKV_AWS_117:The agent calls public AWS APIs and Amazon Bedrock and has no VPC-bound dependencies; running outside a VPC avoids NAT/endpoint cost with no access to private resources.
+    #checkov:skip=CKV_AWS_173:Environment variables hold non-sensitive configuration (model IDs, table/secret ARNs, flags) and are encrypted at rest with the AWS-managed Lambda key; a customer-managed KMS key is not warranted.
+    Properties:
+      Handler: lambda_handler.handler
+      CodeUri: src/
+      Description: GPU Capacity Planning Agent powered by Amazon Bedrock (model-agnostic)
+      Timeout: 180
+      Tracing: Active
+      ReservedConcurrentExecutions: !Ref ReservedConcurrency
+      DeadLetterQueue:
+        Type: SQS
+        TargetArn: !GetAtt AgentDLQ.Arn
+      Environment:
+        Variables:
+          BEDROCK_MODEL_ID: !Ref BedrockModelId
+          ALLOWED_BEDROCK_MODEL_IDS: !Ref AllowedBedrockModelIds
+          AWS_REGION_BEDROCK: !Ref BedrockRegion
+          SECRET_ARN: !Ref AgentSecret
+          CACHE_TABLE_NAME: !Ref ToolCacheTable
+          TOKEN_BUDGET: "80000"
+          # Prompt caching for the Bedrock Converse call. The agent
+          # emits ``cachePoint`` blocks at the end of ``system`` and at
+          # the end of ``toolConfig.tools`` so the system prompt + the
+          # 12 tool definitions get written to the cache; subsequent
+          # requests within the TTL window read the prefix for 10% of
+          # the normal input-token price. See
+          # docs/implementation-guide.md § Prompt Caching for the
+          # economics. Valid values: "5m" (default — low-volume
+          # friendly), "1h" (better amortization for >=1 req/hour
+          # traffic, but writes cost 2x normal input vs. 1.25x for 5m),
+          # or "off" (feature flag). Caching is skipped automatically
+          # if the configured model isn't on the agent's prompt-cache
+          # support allowlist (currently Anthropic Claude 3.5+/4.x and
+          # Amazon Nova; other families silently fall through).
+          BEDROCK_PROMPT_CACHE_TTL: "5m"
+          BEDROCK_GUARDRAIL_ID: !Ref BedrockGuardrailId
+          BEDROCK_GUARDRAIL_VERSION: !Ref BedrockGuardrailVersion
+          REQUIRE_EXTERNAL_ID: !Ref RequireExternalId
+          ALLOWED_CORS_ORIGIN: !Ref AllowedCorsOrigin
+      Policies:
+        - Statement:
+            - !If
+              - BedrockInvokeRegionPinned
+              - Sid: BedrockInvokeRegionPinned
+                Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                Resource:
+                  # Foundation models in the primary Bedrock region.
+                  - !Sub "arn:aws:bedrock:${BedrockRegion}::foundation-model/*"
+                  # Inference profiles owned by this account in the primary
+                  # Bedrock region. A cross-region inference profile (e.g. an
+                  # ID starting with us./eu./apac.) also needs access to the
+                  # underlying foundation models in every region it routes
+                  # through — enumerated below.
+                  - !Sub "arn:aws:bedrock:${BedrockRegion}:${AWS::AccountId}:inference-profile/*"
+                  # US cross-region inference profile targets. Required when
+                  # BedrockModelId begins with "us." — Bedrock routes among
+                  # us-east-1, us-east-2, us-west-2.
+                  - "arn:aws:bedrock:us-east-1::foundation-model/*"
+                  - "arn:aws:bedrock:us-east-2::foundation-model/*"
+                  - "arn:aws:bedrock:us-west-2::foundation-model/*"
+                  # EU cross-region inference profile targets. Required when
+                  # BedrockModelId begins with "eu.".
+                  - "arn:aws:bedrock:eu-west-1::foundation-model/*"
+                  - "arn:aws:bedrock:eu-central-1::foundation-model/*"
+                  - "arn:aws:bedrock:eu-west-3::foundation-model/*"
+                  # APAC cross-region inference profile targets. Required
+                  # when BedrockModelId begins with "apac.".
+                  - "arn:aws:bedrock:ap-northeast-1::foundation-model/*"
+                  - "arn:aws:bedrock:ap-southeast-1::foundation-model/*"
+                  - "arn:aws:bedrock:ap-southeast-2::foundation-model/*"
+              - Sid: BedrockInvokeBroad
+                Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                Resource:
+                  - !Sub "arn:aws:bedrock:*::foundation-model/*"
+                  - !Sub "arn:aws:bedrock:*:${AWS::AccountId}:inference-profile/*"
+            - !If
+              - HasGuardrail
+              - Sid: BedrockGuardrailApply
+                Effect: Allow
+                Action:
+                  - bedrock:ApplyGuardrail
+                Resource:
+                  - !Sub "arn:aws:bedrock:*:${AWS::AccountId}:guardrail/${BedrockGuardrailId}"
+              - !Ref AWS::NoValue
+            - Sid: EC2Describe
+              Effect: Allow
+              Action:
+                - ec2:DescribeInstanceTypeOfferings
+                - ec2:DescribeInstanceTypes
+                - ec2:GetSpotPlacementScores
+                - ec2:DescribeCapacityReservations
+                # DescribeCapacityBlockOfferings powers the
+                # get_capacity_blocks_offerings tool
+                # (src/tools/capacity_blocks.py). Read-only and a
+                # natural complement to check_existing_odcrs when the
+                # agent is recommending Tier 1 (Capacity Blocks) as a
+                # mitigation — the agent checks the public inventory
+                # before suggesting a block rather than suggesting it
+                # blindly.
+                - ec2:DescribeCapacityBlockOfferings
+              Resource: "*"
+            - Sid: CloudTrailRead
+              Effect: Allow
+              Action:
+                - cloudtrail:LookupEvents
+              Resource: "*"
+            - Sid: CloudWatchMetricsRead
+              # get_ice_metrics queries the customer's
+              # GPUCapacityAgent/CustomerICE CloudWatch namespace via
+              # GetMetricStatistics. This is the precise, retrospective
+              # alternative to the CloudTrail LookupEvents scan; when the
+              # customer has deployed the companion metric-filter stack
+              # (docs/samples/customer-side-ice-metric-filter.yaml), a
+              # single GetMetricStatistics call returns an exact count of
+              # every matching capacity error, sidestepping LookupEvents'
+              # paging limits on active fleets. For cross-account
+              # customers, also add cloudwatch:GetMetricStatistics to the
+              # trust-policy template shipped with
+              # docs/implementation-guide.md.
+              Effect: Allow
+              Action:
+                - cloudwatch:GetMetricStatistics
+              Resource: "*"
+            - Sid: SageMakerDescribeRead
+              # get_ice_history calls DescribeEndpointConfig to resolve
+              # the customer's endpoint-config -> instance-type mapping
+              # when a CreateEndpoint/UpdateEndpoint capacity failure is
+              # found in CloudTrail. CloudTrail's inline payload
+              # references the endpoint config by NAME, not by variant
+              # list, so without this permission the SageMaker branch
+              # of the ice-history tool cannot match capacity failures
+              # to a specific instance type and silently returns
+              # event_count=0 -> capacity_signal="clean" -- which the
+              # scorer will accept as valid ICE evidence. That's a
+              # correctness bug (the false-DEPLOYABLE class of failure
+              # the review identified). GRANT this in prod.
+              # For cross-account customers, also add the same action
+              # to the customer trust-policy template shipped with
+              # docs/implementation-guide.md.
+              #
+              # SearchTrainingPlanOfferings is staged here for the
+              # workshop's "add one tool" lab
+              # (workshop/lab-add-one-tool.md —
+              # get_sagemaker_training_plan_offerings), the Tier 2
+              # complement to the Tier 1 get_capacity_blocks_offerings
+              # tool. Attendees add the tool code in Module 5 without
+              # a template change. Safe to keep in a production deploy
+              # for the same reason the Capacity Blocks permission is:
+              # read-only and a natural piece of the three-tier
+              # mitigation ladder the agent reasons about.
+              Effect: Allow
+              Action:
+                - sagemaker:DescribeEndpointConfig
+                - sagemaker:SearchTrainingPlanOfferings
+              Resource: "*"
+            - Sid: PricingRead
+              Effect: Allow
+              Action:
+                - pricing:GetProducts
+              Resource: "*"
+            - Sid: ServiceQuotasRead
+              Effect: Allow
+              Action:
+                - servicequotas:ListServiceQuotas
+              Resource: "*"
+            - Sid: XRayWrite
+              Effect: Allow
+              Action:
+                - xray:PutTraceSegments
+                - xray:PutTelemetryRecords
+              Resource: "*"
+            - Sid: SecretsManagerRead
+              Effect: Allow
+              Action:
+                - secretsmanager:GetSecretValue
+              Resource: !Ref AgentSecret
+            - Sid: DynamoDBCacheAccess
+              Effect: Allow
+              Action:
+                - dynamodb:GetItem
+                - dynamodb:PutItem
+                - dynamodb:DeleteItem
+              Resource: !GetAtt ToolCacheTable.Arn
+            - !If
+              - HasCrossAccountAccess
+              - Sid: AssumeCustomerRole
+                Effect: Allow
+                Action: sts:AssumeRole
+                Resource: !Ref AllowedCustomerRoleArnPattern
+              - !Ref AWS::NoValue
+      # NOTE: FunctionUrlConfig was removed from this Function during
+      # pre-release workshop testing. The ``!If [FunctionUrlEnabled,
+      # {AuthType: AWS_IAM, InvokeMode: BUFFERED}, !Ref AWS::NoValue]``
+      # pattern tripped CloudFormation's built-in
+      # ``AWS::EarlyValidation::PropertyValidation`` hook on ChangeSet
+      # creation — with BOTH branches of the !If (true and false),
+      # across us-east-1 and us-west-2, at every parameter combination
+      # tested. cfn-lint and sam validate both stayed clean; only the
+      # actual CreateChangeSet call surfaced the failure. Removing the
+      # property entirely lets the rest of the template deploy.
+      #
+      # To add a Lambda Function URL for long-running queries (>29s
+      # API Gateway hard timeout) after deploy, create a separate
+      # ``AWS::Lambda::Url`` resource pointing at the deployed
+      # CapacityAgentFunction and grant callers ``lambda:InvokeFunctionUrl``.
+      # Do NOT re-add ``FunctionUrlConfig`` here until AWS confirms the
+      # early-validation issue is resolved.
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Path: /plan
+            Method: post
+            RestApiId: !Ref CapacityAgentApi
+
+  # Function URL for long-running queries (up to 180s). Opt-in via
+  # ``EnableFunctionUrl=true``. Declared as a raw ``AWS::Lambda::Url``
+  # (rather than SAM's ``FunctionUrlConfig`` block) because the SAM
+  # ``!If [Cond, {...}, !Ref AWS::NoValue]`` pattern trips CloudFormation's
+  # ``AWS::EarlyValidation::PropertyValidation`` hook at ChangeSet
+  # creation — with BOTH branches, in every region and parameter combo
+  # tested during pre-release workshop testing. Using a standalone
+  # resource with a top-level ``Condition`` bypasses that hook.
+  #
+  # IMPORTANT: The Function URL is AWS_IAM auth ONLY — WAF does NOT
+  # front Lambda Function URLs. Callers with lambda:InvokeFunctionUrl
+  # bypass the rate limit, geo-block, and AWS managed rule sets that
+  # protect the API Gateway endpoint. Enable ONLY when your IAM policies
+  # are the sole trust boundary you need, or when you front the URL with
+  # CloudFront + regional WAF. Use the API Gateway path
+  # (${ApiEndpoint}) for internet-exposed use.
+  CapacityAgentFunctionUrl:
+    Type: AWS::Lambda::Url
+    Condition: FunctionUrlEnabled
+    Properties:
+      TargetFunctionArn: !GetAtt CapacityAgentFunction.Arn
+      AuthType: AWS_IAM
+      InvokeMode: BUFFERED
+
+  # Grant the function-URL principal permission to invoke the Lambda.
+  # AWS::Lambda::Url does NOT create this permission automatically; the
+  # URL will exist but every request returns 403 until this is in place.
+  #
+  # Principal is scoped to the account owning this stack — NOT the
+  # wildcard "*" that a lot of SAM examples use. ``Principal: "*"`` with
+  # ``FunctionUrlAuthType: AWS_IAM`` still gets flagged as "world
+  # accessible" by automated security scanners because the
+  # resource-based policy technically allows any AWS principal (even in
+  # another account) with ``lambda:InvokeFunctionUrl`` on this ARN.
+  # Automated remediation tooling may remove such a statement, which
+  # leaves the URL callable-in-principle but every request 403s until
+  # the stack is re-deployed with a scoped Principal. The account-ID
+  # scoping below satisfies both defense-in-depth AND the workshop use
+  # case (all callers live in the same sandbox account).
+  CapacityAgentFunctionUrlPermission:
+    Type: AWS::Lambda::Permission
+    Condition: FunctionUrlEnabled
+    Properties:
+      FunctionName: !Ref CapacityAgentFunction
+      Action: lambda:InvokeFunctionUrl
+      Principal: !Ref AWS::AccountId
+      FunctionUrlAuthType: AWS_IAM
+
+  CapacityAgentLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${CapacityAgentFunction}"
+      RetentionInDays: !Ref LogRetentionDays
+      KmsKeyId: !If [HasLogEncryptionKey, !Ref LogEncryptionKeyArn, !Ref "AWS::NoValue"]
+
+  # --- Flexible Authentication Resources ---
+
+  # API Key authentication resources (active when AuthMethod = API_KEY)
+  ApiKey:
+    Type: AWS::ApiGateway::ApiKey
+    Condition: IsAPIKeyAuth
+    DependsOn: CapacityAgentApiProdStage
+    Properties:
+      Name: !Sub "${AWS::StackName}-api-key"
+      Enabled: true
+      StageKeys:
+        - RestApiId: !Ref CapacityAgentApi
+          StageName: Prod
+
+  ApiUsagePlan:
+    Type: AWS::ApiGateway::UsagePlan
+    Condition: IsAPIKeyAuth
+    DependsOn: CapacityAgentApiProdStage
+    Properties:
+      UsagePlanName: !Sub "${AWS::StackName}-usage-plan"
+      Throttle:
+        RateLimit: 5
+        BurstLimit: 10
+      ApiStages:
+        - ApiId: !Ref CapacityAgentApi
+          Stage: Prod
+
+  ApiUsagePlanKey:
+    Type: AWS::ApiGateway::UsagePlanKey
+    Condition: IsAPIKeyAuth
+    Properties:
+      KeyId: !Ref ApiKey
+      KeyType: API_KEY
+      UsagePlanId: !Ref ApiUsagePlan
+
+  # ---------------------------------------------------------------------------
+  # ApiDeploymentRefresher — CloudFormation custom resource that forces a
+  # fresh ``POST /restapis/{id}/deployments`` after the usage-plan-key
+  # binding settles.
+  #
+  # Why this exists. Fresh SAM deploys with ``AuthMethod=API_KEY`` 403 at
+  # the API Gateway edge for several minutes after ``CREATE_COMPLETE``:
+  # the ``AWS::ApiGateway::Deployment`` resource (which SAM manages
+  # under a hash-suffixed logical name) is created before the
+  # ``AWS::ApiGateway::UsagePlanKey`` binding is finalized, and API
+  # Gateway's edge cache snapshots the stage with the OLD auth config.
+  # Requests carrying the deployed API key get rejected with
+  # ``ForbiddenException`` until the cache ages out.
+  # Verified on 2026-08-05 in a Workshop Studio-vended sandbox: the
+  # fix is a manual ``aws apigateway create-deployment --stage-name Prod``
+  # which forces the stage to re-snapshot and refresh the cache. This
+  # custom resource automates that step so attendees never see the
+  # transient 403.
+  #
+  # Shape. One tiny Python Lambda invoked exactly by CloudFormation as a
+  # ``AWS::CloudFormation::CustomResource``. ``DependsOn: ApiUsagePlanKey``
+  # guarantees the refresh fires AFTER the binding exists. DELETE is
+  # a no-op because the stack is tearing down the API anyway.
+  #
+  # Security. The Lambda has no network ingress — only CloudFormation
+  # (via the service token presigned-URL contract) invokes it. Its
+  # execution role grants exactly ``apigateway:POST`` on the single
+  # ARN ``arn:${AWS::Partition}:apigateway:${AWS::Region}::/restapis/${CapacityAgentApi}/deployments``
+  # — scoped to this stack's REST API only, no wildcards, no other
+  # control-plane actions. Logs go to a dedicated log group with the
+  # same encryption + retention policy as the agent Lambda's log group.
+  # ---------------------------------------------------------------------------
+
+  ApiDeploymentRefresherLogGroup:
+    Type: AWS::Logs::LogGroup
+    Condition: IsAPIKeyAuth
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-ApiDeploymentRefresher"
+      RetentionInDays: !Ref LogRetentionDays
+      KmsKeyId: !If [HasLogEncryptionKey, !Ref LogEncryptionKeyArn, !Ref "AWS::NoValue"]
+
+  ApiDeploymentRefresherRole:
+    Type: AWS::IAM::Role
+    Condition: IsAPIKeyAuth
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: refresh-deployment
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: CreateDeploymentOnThisApiOnly
+                Effect: Allow
+                Action: apigateway:POST
+                Resource: !Sub "arn:${AWS::Partition}:apigateway:${AWS::Region}::/restapis/${CapacityAgentApi}/deployments"
+              - Sid: WriteOwnLogsOnly
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${AWS::StackName}-ApiDeploymentRefresher:*"
+
+  ApiDeploymentRefresherFunction:
+    Type: AWS::Lambda::Function
+    Condition: IsAPIKeyAuth
+    DependsOn: ApiDeploymentRefresherLogGroup
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-ApiDeploymentRefresher"
+      Description: Forces an API Gateway stage redeploy to refresh the auth cache after the usage-plan-key binding settles. Invoked once at stack create/update by a CloudFormation Custom Resource.
+      Runtime: python3.13
+      Handler: index.handler
+      Role: !GetAtt ApiDeploymentRefresherRole.Arn
+      # Timeout: 180s covers the 90s propagation wait (see Code.ZipFile below)
+      # plus margin for the ``apigateway:CreateDeployment`` call, the CFN
+      # response PUT, and Lambda init. Verified on 2026-10-21 that the fresh
+      # deployment needs 60-120s to settle on API Gateway's edge cache before
+      # requests stop 403ing. 90s wait + 15s margin + 60s misc = 165s under
+      # the 180s ceiling.
+      Timeout: 180
+      MemorySize: 128
+      # No ``ReservedConcurrentExecutions`` on purpose. Reserving even
+      # 1 slot subtracts from the account's unreserved pool; sandbox
+      # accounts with ~110 units total that already reserve 10 for the
+      # agent Lambda would then land at 99 unreserved < 100 minimum
+      # and ``sam deploy`` fails with ``Specified
+      # ReservedConcurrentExecutions ... decreases account's
+      # UnreservedConcurrentExecution below its minimum value of [100]``.
+      # Observed in Workshop Studio-vended sandbox 2026-10-21. CFN
+      # already serializes Custom Resource invocations across a single
+      # stack lifecycle (one Create, zero-or-one Update, one Delete),
+      # so there's no concurrent-invocation storm this reservation
+      # would protect against.
+      Code:
+        ZipFile: |
+          """Force a fresh API Gateway stage redeploy as a CFN Custom Resource.
+
+          Addresses a well-known SAM-plus-API-Gateway race on the API_KEY
+          auth path where the deployment snapshot predates the
+          usage-plan-key binding, leaving the stage returning 403
+          ``ForbiddenException`` for several minutes after CFN reports
+          ``CREATE_COMPLETE``. Issuing a fresh ``CreateDeployment`` call
+          snapshots the current stage auth config (which by this point
+          includes the binding) and refreshes API Gateway's edge cache.
+
+          The ``CreateDeployment`` API returns success as soon as the
+          deployment resource exists in the control plane, but API
+          Gateway's EDGE cache (the Prod stage snapshot) needs 60-120
+          seconds to actually pick up the new deployment and start
+          serving requests against the refreshed auth config. If this
+          Lambda signals SUCCESS to CloudFormation before that
+          propagation finishes, CFN marks the stack ``CREATE_COMPLETE``
+          and attendees still hit a 2-minute 403 window on their first
+          query. We sleep inside the Lambda so CFN waits with us —
+          attendees never see the 403.
+
+          Verified in a Workshop Studio-vended sandbox on 2026-10-21:
+          without the sleep, a query ~5 seconds after CREATE_COMPLETE
+          returned {"message":"Forbidden"}; the same query after a
+          120s wait returned a full agent response. The 90s sleep below
+          picks a value conservatively above the observed propagation
+          window while staying under the Lambda Timeout (180s).
+          """
+
+          import json
+          import logging
+          import time
+          import urllib.request
+
+          import boto3
+
+          logger = logging.getLogger()
+          logger.setLevel(logging.INFO)
+          apigateway = boto3.client("apigateway")
+
+
+          def _send_response(event, context, status, data=None, reason=None):
+              """PUT the Custom Resource response via CFN's presigned URL."""
+              body = {
+                  "Status": status,
+                  "Reason": reason or f"See CloudWatch log stream {context.log_stream_name}",
+                  "PhysicalResourceId": event.get("PhysicalResourceId") or context.log_stream_name,
+                  "StackId": event["StackId"],
+                  "RequestId": event["RequestId"],
+                  "LogicalResourceId": event["LogicalResourceId"],
+                  "NoEcho": False,
+                  "Data": data or {},
+              }
+              encoded = json.dumps(body).encode("utf-8")
+              req = urllib.request.Request(
+                  event["ResponseURL"],
+                  data=encoded,
+                  headers={"content-type": "", "content-length": str(len(encoded))},
+                  method="PUT",
+              )
+              with urllib.request.urlopen(req, timeout=20) as resp:  # nosec B310 - presigned URL from CFN
+                  logger.info("CFN response status: %s", resp.status)
+
+
+          def handler(event, context):
+              logger.info("Event: %s", json.dumps(event))
+              try:
+                  request_type = event["RequestType"]
+                  if request_type == "Delete":
+                      # Stack tear-down — the API is being removed, so refreshing
+                      # its stage is both pointless and racy (the APIs may
+                      # already be gone). Treat as a no-op success.
+                      _send_response(
+                          event,
+                          context,
+                          "SUCCESS",
+                          reason="Delete is a no-op; no stage refresh needed.",
+                      )
+                      return
+
+                  props = event["ResourceProperties"]
+                  rest_api_id = props["RestApiId"]
+                  stage_name = props.get("StageName", "Prod")
+
+                  resp = apigateway.create_deployment(
+                      restApiId=rest_api_id,
+                      stageName=stage_name,
+                      description=(
+                          "ApiDeploymentRefresher — forced redeploy to refresh the "
+                          "stage auth cache after ApiUsagePlanKey settled."
+                      ),
+                  )
+                  deployment_id = resp.get("id", "")
+                  logger.info(
+                      "Created deployment %s on %s/%s",
+                      deployment_id,
+                      rest_api_id,
+                      stage_name,
+                  )
+
+                  # Wait for API Gateway's edge cache to pick up the new
+                  # deployment. See the module docstring for context —
+                  # without this sleep, attendees get a 2-minute 403
+                  # window on their first query after CREATE_COMPLETE.
+                  propagation_wait_seconds = 90
+                  logger.info(
+                      "Waiting %ds for API Gateway edge cache to pick up"
+                      " deployment %s on %s/%s",
+                      propagation_wait_seconds,
+                      deployment_id,
+                      rest_api_id,
+                      stage_name,
+                  )
+                  time.sleep(propagation_wait_seconds)
+                  logger.info("Propagation wait complete; signaling SUCCESS")
+
+                  _send_response(
+                      event,
+                      context,
+                      "SUCCESS",
+                      data={"DeploymentId": deployment_id},
+                  )
+              except Exception as exc:  # noqa: BLE001 — must send FAILED on anything
+                  logger.exception("ApiDeploymentRefresher failed")
+                  # Send FAILED so CFN rolls back cleanly instead of hanging
+                  # for the Custom Resource timeout (default 1 hour).
+                  _send_response(
+                      event,
+                      context,
+                      "FAILED",
+                      reason=str(exc)[:1024],
+                  )
+
+  ApiDeploymentRefresher:
+    Type: AWS::CloudFormation::CustomResource
+    Condition: IsAPIKeyAuth
+    DependsOn:
+      - ApiUsagePlanKey
+      - WafWebACLAssociation
+    Properties:
+      ServiceToken: !GetAtt ApiDeploymentRefresherFunction.Arn
+      RestApiId: !Ref CapacityAgentApi
+      StageName: Prod
+
+  # NOTE: the Cognito user pool + client + standalone Authorizer
+  # resources have all been removed. The standalone CognitoApiAuthorizer
+  # was orphaned (never attached to any API method), so
+  # AuthMethod=COGNITO deploys
+  # had no auth on /plan — a security defect surfaced by cfn-lint's
+  # E3003 + W3660. A proper Cognito implementation requires either
+  # two conditional API resources or a per-event Auth override and is
+  # tracked as a follow-up. Deployments needing OIDC-based auth
+  # today should front the API Gateway with CloudFront + Cognito or
+  # attach a custom Lambda authorizer at the method level.
+
+  WafWebACL:
+    Type: AWS::WAFv2::WebACL
+    Properties:
+      Name: !Sub "${AWS::StackName}-web-acl"
+      Scope: REGIONAL
+      DefaultAction:
+        Allow: {}
+      VisibilityConfig:
+        SampledRequestsEnabled: true
+        CloudWatchMetricsEnabled: true
+        MetricName: !Sub "${AWS::StackName}-web-acl"
+      Rules:
+        - !If
+          - IsGeoBlockEnabled
+          - Name: GeoBlockRule
+            Priority: 1
+            Action:
+              Block: {}
+            Statement:
+              GeoMatchStatement:
+                CountryCodes: !Split [",", !Ref GeoBlockCountries]
+            VisibilityConfig:
+              SampledRequestsEnabled: true
+              CloudWatchMetricsEnabled: true
+              MetricName: !Sub "${AWS::StackName}-geo-block"
+          - !Ref "AWS::NoValue"
+        - Name: RateLimitRule
+          Priority: 2
+          Action:
+            Block: {}
+          Statement:
+            RateBasedStatement:
+              Limit: !Ref WafRateLimit
+              AggregateKeyType: IP
+          VisibilityConfig:
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+            MetricName: !Sub "${AWS::StackName}-rate-limit"
+        - Name: AWSManagedRulesCommonRuleSet
+          Priority: 3
+          OverrideAction:
+            None: {}
+          Statement:
+            ManagedRuleGroupStatement:
+              VendorName: AWS
+              Name: AWSManagedRulesCommonRuleSet
+          VisibilityConfig:
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+            MetricName: !Sub "${AWS::StackName}-common-rules"
+        - Name: AWSManagedRulesKnownBadInputsRuleSet
+          Priority: 4
+          OverrideAction:
+            None: {}
+          Statement:
+            ManagedRuleGroupStatement:
+              VendorName: AWS
+              Name: AWSManagedRulesKnownBadInputsRuleSet
+          VisibilityConfig:
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+            MetricName: !Sub "${AWS::StackName}-bad-inputs"
+
+  WafWebACLAssociation:
+    Type: AWS::WAFv2::WebACLAssociation
+    DependsOn: CapacityAgentApiProdStage
+    Properties:
+      WebACLArn: !GetAtt WafWebACL.Arn
+      ResourceArn: !Sub "arn:aws:apigateway:${AWS::Region}::/restapis/${CapacityAgentApi}/stages/Prod"
+
+  OperationalDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: !Sub "${AWS::StackName}-operational"
+      DashboardBody: !Sub |
+        {
+          "widgets": [
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 0,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "title": "Lambda Invocations, Errors & Throttles",
+                "metrics": [
+                  ["AWS/Lambda", "Invocations", "FunctionName", "${CapacityAgentFunction}", {"stat": "Sum"}],
+                  ["AWS/Lambda", "Errors", "FunctionName", "${CapacityAgentFunction}", {"stat": "Sum"}],
+                  ["AWS/Lambda", "Throttles", "FunctionName", "${CapacityAgentFunction}", {"stat": "Sum"}]
+                ],
+                "period": 300,
+                "region": "${AWS::Region}",
+                "view": "timeSeries",
+                "stacked": false
+              }
+            },
+            {
+              "type": "metric",
+              "x": 12,
+              "y": 0,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "title": "Lambda Duration Percentiles",
+                "metrics": [
+                  ["AWS/Lambda", "Duration", "FunctionName", "${CapacityAgentFunction}", {"stat": "p50", "label": "p50"}],
+                  ["AWS/Lambda", "Duration", "FunctionName", "${CapacityAgentFunction}", {"stat": "p90", "label": "p90"}],
+                  ["AWS/Lambda", "Duration", "FunctionName", "${CapacityAgentFunction}", {"stat": "p99", "label": "p99"}]
+                ],
+                "period": 300,
+                "region": "${AWS::Region}",
+                "view": "timeSeries",
+                "stacked": false
+              }
+            },
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 6,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "title": "Bedrock Token Usage",
+                "metrics": [
+                  ["${AWS::StackName}/Tools", "InputTokens", {"stat": "Sum", "label": "Input Tokens"}],
+                  ["${AWS::StackName}/Tools", "OutputTokens", {"stat": "Sum", "label": "Output Tokens"}]
+                ],
+                "period": 300,
+                "region": "${AWS::Region}",
+                "view": "timeSeries",
+                "stacked": false
+              }
+            },
+            {
+              "type": "metric",
+              "x": 12,
+              "y": 6,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "title": "Tool Call Distribution",
+                "metrics": [
+                  ["CapacityAgent/Tools", "Invocations", "ToolName", "check_instance_availability", {"stat": "Sum"}],
+                  ["CapacityAgent/Tools", "Invocations", "ToolName", "get_sagemaker_pricing", {"stat": "Sum"}],
+                  ["CapacityAgent/Tools", "Invocations", "ToolName", "get_sagemaker_quota", {"stat": "Sum"}],
+                  ["CapacityAgent/Tools", "Invocations", "ToolName", "find_alternative_instances", {"stat": "Sum"}]
+                ],
+                "period": 300,
+                "region": "${AWS::Region}",
+                "view": "timeSeries",
+                "stacked": true
+              }
+            },
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 12,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "title": "DLQ Message Count",
+                "metrics": [
+                  ["AWS/SQS", "ApproximateNumberOfMessagesVisible", "QueueName", "${AgentDLQ.QueueName}", {"stat": "Sum"}]
+                ],
+                "period": 300,
+                "region": "${AWS::Region}",
+                "view": "timeSeries",
+                "stacked": false
+              }
+            },
+            {
+              "type": "metric",
+              "x": 12,
+              "y": 12,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "title": "Bedrock Spend — Tokens per 5-min (with alarm threshold)",
+                "metrics": [
+                  ["${AWS::StackName}/Bedrock", "TotalTokens", {"stat": "Sum", "label": "Total"}],
+                  ["${AWS::StackName}/Bedrock", "InputTokens", {"stat": "Sum", "label": "Input"}],
+                  ["${AWS::StackName}/Bedrock", "OutputTokens", {"stat": "Sum", "label": "Output"}]
+                ],
+                "period": 300,
+                "region": "${AWS::Region}",
+                "view": "timeSeries",
+                "stacked": false,
+                "annotations": {
+                  "horizontal": [
+                    {
+                      "label": "BedrockSpendAlarm threshold",
+                      "value": ${BedrockTokenAlarmThreshold}
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 18,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "title": "Handler p99 latency by endpoint (with alarm thresholds)",
+                "metrics": [
+                  ["CapacityAgent/Invocation", "InvocationDuration", "Endpoint", "ApiGateway", {"stat": "p99", "label": "API Gateway p99"}],
+                  ["CapacityAgent/Invocation", "InvocationDuration", "Endpoint", "FunctionUrl", {"stat": "p99", "label": "Function URL p99"}]
+                ],
+                "period": 300,
+                "region": "${AWS::Region}",
+                "view": "timeSeries",
+                "stacked": false,
+                "annotations": {
+                  "horizontal": [
+                    {"label": "API Gateway alarm (25s)", "value": 25000, "color": "#ff9900"},
+                    {"label": "Function URL alarm (150s)", "value": 150000, "color": "#d62728"}
+                  ]
+                }
+              }
+            },
+            {
+              "type": "log",
+              "x": 12,
+              "y": 18,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "title": "Top callers by Bedrock token spend (last hour) — grouped by hashed caller ID + type",
+                "query": "SOURCE '${CapacityAgentLogGroup}' | fields @timestamp, caller_id_hash, caller_type, total_tokens | filter event = \"usage_tracking\" | stats sum(total_tokens) as tokens, count() as invocations by caller_id_hash, caller_type | sort tokens desc | limit 20",
+                "region": "${AWS::Region}",
+                "view": "table"
+              }
+            },
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 24,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "title": "Bedrock prompt cache — hit rate %",
+                "metrics": [
+                  [{"expression": "IF((m1 + m2) > 0, 100 * m1 / (m1 + m2), 0)", "label": "Cache hit rate %", "id": "e1", "yAxis": "left", "color": "#2ca02c"}],
+                  ["${AWS::StackName}/Bedrock", "CacheReadTokens", {"stat": "Sum", "id": "m1", "visible": false}],
+                  ["${AWS::StackName}/Bedrock", "InputTokens", {"stat": "Sum", "id": "m2", "visible": false}]
+                ],
+                "period": 300,
+                "region": "${AWS::Region}",
+                "view": "timeSeries",
+                "stacked": false,
+                "yAxis": {"left": {"min": 0, "max": 100, "label": "Percent"}}
+              }
+            },
+            {
+              "type": "metric",
+              "x": 12,
+              "y": 24,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "title": "Bedrock prompt cache — read vs. write tokens (5-min sums)",
+                "metrics": [
+                  ["${AWS::StackName}/Bedrock", "CacheReadTokens", {"stat": "Sum", "label": "Cache reads", "color": "#2ca02c"}],
+                  ["${AWS::StackName}/Bedrock", "CacheWriteTokens", {"stat": "Sum", "label": "Cache writes", "color": "#ff9900"}],
+                  ["${AWS::StackName}/Bedrock", "InputTokens", {"stat": "Sum", "label": "Billed-full input (reference)", "color": "#1f77b4"}]
+                ],
+                "period": 300,
+                "region": "${AWS::Region}",
+                "view": "timeSeries",
+                "stacked": false
+              }
+            }
+          ]
+        }
+
+  # Stack-managed SNS alarm topic. Created only when
+  # AlarmNotificationTopicArn is empty (workshop / sandbox pattern where
+  # no pre-existing topic exists in the deploying account). Production
+  # deployments should pass a real ARN via AlarmNotificationTopicArn so
+  # alarms route to the team's existing pager and this resource never
+  # gets created.
+  #
+  # No subscribers are attached by default. Consumers can subscribe
+  # their own email / SQS / Lambda via the console or a follow-up
+  # SNS::Subscription resource.
+  AgentAlarmTopic:
+    Type: AWS::SNS::Topic
+    Condition: HasNoExternalAlarmTopic
+    Properties:
+      DisplayName: !Sub "${AWS::StackName}-alarms"
+      TopicName: !Sub "${AWS::StackName}-alarms"
+      # Encryption at rest via the AWS-managed SNS KMS key. Satisfies
+      # Checkov CKV_AWS_26 (SNS encryption-at-rest). Uses the AWS-
+      # managed key alias ``alias/aws/sns`` so there is no customer
+      # KMS cost or key-rotation burden. Operators who want a
+      # customer-managed key can replace this value with their own
+      # KMS key ARN or alias post-deploy.
+      KmsMasterKeyId: alias/aws/sns
+
+  # CloudWatch Alarms for Critical Health Indicators
+  # DLQ alarms come in two flavours (M7):
+  #   1. DLQMessagesAlarm — a rate-based alarm that fires when 5+ messages
+  #      pile up within a rolling 15-min window. Threshold + window sized
+  #      to skip transient single-message blips (a retry that succeeded
+  #      after one DLQ enqueue is normal Lambda behavior) while catching
+  #      a real spike in async invocation failures.
+  #   2. DLQAgedMessagesAlarm — fires when the OLDEST visible message is
+  #      more than 1 hour old. This catches the more insidious failure
+  #      mode: messages piling up slowly and nobody watching. A single
+  #      threshold-1 alarm on visible messages page-storms operators; an
+  #      aged-messages alarm signals a real ops issue.
+  DLQMessagesAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-dlq-message-spike"
+      AlarmDescription: >
+        Alarm when 5+ messages pile up in the dead-letter queue within a
+        15-min window. Skips transient single-message blips that a normal
+        Lambda retry storm would produce; catches real failure spikes.
+      Namespace: AWS/SQS
+      MetricName: ApproximateNumberOfMessagesVisible
+      Dimensions:
+        - Name: QueueName
+          Value: !GetAtt AgentDLQ.QueueName
+      Statistic: Maximum
+      Period: 900  # 15 minutes
+      EvaluationPeriods: 1
+      Threshold: 5
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !If [HasExternalAlarmTopic, !Ref AlarmNotificationTopicArn, !Ref AgentAlarmTopic]
+      OKActions:
+        - !If [HasExternalAlarmTopic, !Ref AlarmNotificationTopicArn, !Ref AgentAlarmTopic]
+
+  DLQAgedMessagesAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-dlq-aged-messages"
+      AlarmDescription: >
+        Alarm when the oldest visible message in the dead-letter queue is
+        older than 1 hour. Catches slow-drip failures that
+        DLQMessagesAlarm would miss (fewer than 5 messages spread over a
+        long period).
+      Namespace: AWS/SQS
+      MetricName: ApproximateAgeOfOldestMessage
+      Dimensions:
+        - Name: QueueName
+          Value: !GetAtt AgentDLQ.QueueName
+      Statistic: Maximum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 3600  # 1 hour, in seconds
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !If [HasExternalAlarmTopic, !Ref AlarmNotificationTopicArn, !Ref AgentAlarmTopic]
+      OKActions:
+        - !If [HasExternalAlarmTopic, !Ref AlarmNotificationTopicArn, !Ref AgentAlarmTopic]
+
+  ErrorRateAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-error-rate"
+      AlarmDescription: Alarm when Lambda error rate exceeds 5%
+      EvaluationPeriods: 1
+      Metrics:
+        - Id: errors
+          MetricStat:
+            Metric:
+              Namespace: AWS/Lambda
+              MetricName: Errors
+              Dimensions:
+                - Name: FunctionName
+                  Value: !Ref CapacityAgentFunction
+            Period: 300
+            Stat: Sum
+          ReturnData: false
+        - Id: invocations
+          MetricStat:
+            Metric:
+              Namespace: AWS/Lambda
+              MetricName: Invocations
+              Dimensions:
+                - Name: FunctionName
+                  Value: !Ref CapacityAgentFunction
+            Period: 300
+            Stat: Sum
+          ReturnData: false
+        - Id: error_rate
+          Expression: "IF(invocations > 0, (errors / invocations) * 100, 0)"
+          Label: Error Rate (%)
+          ReturnData: true
+      Threshold: 5
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !If [HasExternalAlarmTopic, !Ref AlarmNotificationTopicArn, !Ref AgentAlarmTopic]
+      OKActions:
+        - !If [HasExternalAlarmTopic, !Ref AlarmNotificationTopicArn, !Ref AgentAlarmTopic]
+
+  # p99 latency split by endpoint (H10). The API Gateway path has a hard
+  # 29s cap, so the alarm fires 4s below that so operators are warned
+  # BEFORE clients start seeing 504s. The Function URL path can legitimately
+  # run up to 180s; a single AWS/Lambda Duration alarm would fire on every
+  # legitimate FURL query. Both alarms read the endpoint-dimensioned EMF
+  # metric emitted by src/lambda_handler.py::handler.
+  ApiGatewayP99LatencyAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-api-gateway-p99-latency"
+      AlarmDescription: >
+        Alarm when p99 handler duration on the API Gateway endpoint
+        exceeds 25 seconds. Sized 4s below the API Gateway 29s hard
+        timeout so operators are notified before clients see 504s.
+      Namespace: CapacityAgent/Invocation
+      MetricName: InvocationDuration
+      Dimensions:
+        - Name: Endpoint
+          Value: ApiGateway
+      ExtendedStatistic: p99
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 25000
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !If [HasExternalAlarmTopic, !Ref AlarmNotificationTopicArn, !Ref AgentAlarmTopic]
+      OKActions:
+        - !If [HasExternalAlarmTopic, !Ref AlarmNotificationTopicArn, !Ref AgentAlarmTopic]
+
+  FunctionUrlP99LatencyAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: FunctionUrlEnabled
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-function-url-p99-latency"
+      AlarmDescription: >
+        Alarm when p99 handler duration on the Function URL endpoint
+        exceeds 150 seconds. Sized 30s below the 180s Function URL
+        timeout so operators can investigate before clients time out.
+      Namespace: CapacityAgent/Invocation
+      MetricName: InvocationDuration
+      Dimensions:
+        - Name: Endpoint
+          Value: FunctionUrl
+      ExtendedStatistic: p99
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 150000
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !If [HasExternalAlarmTopic, !Ref AlarmNotificationTopicArn, !Ref AgentAlarmTopic]
+      OKActions:
+        - !If [HasExternalAlarmTopic, !Ref AlarmNotificationTopicArn, !Ref AgentAlarmTopic]
+
+  ThrottlesAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-throttles"
+      AlarmDescription: Alarm when Lambda function is throttled
+      Namespace: AWS/Lambda
+      MetricName: Throttles
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref CapacityAgentFunction
+      Statistic: Sum
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !If [HasExternalAlarmTopic, !Ref AlarmNotificationTopicArn, !Ref AgentAlarmTopic]
+      OKActions:
+        - !If [HasExternalAlarmTopic, !Ref AlarmNotificationTopicArn, !Ref AgentAlarmTopic]
+
+  # --- Bedrock Spend Observability (H4) ---
+
+  # Metric filter extracts total_tokens from the handler's structured
+  # usage_tracking log line into a CloudWatch metric.
+  # Log shape (see src/lambda_handler.py::_emit_usage_tracking_log):
+  #   { "event": "usage_tracking", "caller_id": "...",
+  #     "input_tokens": N, "output_tokens": N, "total_tokens": N, ... }
+  BedrockTokenUsageMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    # DependsOn removed — the Ref on LogGroupName below already
+    # establishes ordering (cfn-lint W3005).
+    Properties:
+      LogGroupName: !Ref CapacityAgentLogGroup
+      FilterPattern: '{ $.event = "usage_tracking" }'
+      MetricTransformations:
+        - MetricNamespace: !Sub "${AWS::StackName}/Bedrock"
+          MetricName: TotalTokens
+          MetricValue: "$.total_tokens"
+          Unit: Count
+          DefaultValue: 0
+
+  BedrockInputTokensMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    # DependsOn removed — the Ref on LogGroupName below already
+    # establishes ordering (cfn-lint W3005).
+    Properties:
+      LogGroupName: !Ref CapacityAgentLogGroup
+      FilterPattern: '{ $.event = "usage_tracking" }'
+      MetricTransformations:
+        - MetricNamespace: !Sub "${AWS::StackName}/Bedrock"
+          MetricName: InputTokens
+          MetricValue: "$.input_tokens"
+          Unit: Count
+          DefaultValue: 0
+
+  BedrockOutputTokensMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    # DependsOn removed — the Ref on LogGroupName below already
+    # establishes ordering (cfn-lint W3005).
+    Properties:
+      LogGroupName: !Ref CapacityAgentLogGroup
+      FilterPattern: '{ $.event = "usage_tracking" }'
+      MetricTransformations:
+        - MetricNamespace: !Sub "${AWS::StackName}/Bedrock"
+          MetricName: OutputTokens
+          MetricValue: "$.output_tokens"
+          Unit: Count
+          DefaultValue: 0
+
+  # Prompt-caching observability. The agent emits ``cache_read_tokens``
+  # and ``cache_write_tokens`` on every ``usage_tracking`` line. They
+  # roll up as independent CloudWatch metrics so the operational
+  # dashboard can plot a cache-efficiency ratio
+  # (cache_read / (cache_read + input_tokens)) and operators can see
+  # at a glance whether prompt caching is actually hitting on their
+  # traffic shape. Both DefaultValue: 0 so idle windows don't look
+  # like missing data (which would break metric-math expressions
+  # downstream).
+  BedrockCacheReadTokensMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref CapacityAgentLogGroup
+      FilterPattern: '{ $.event = "usage_tracking" }'
+      MetricTransformations:
+        - MetricNamespace: !Sub "${AWS::StackName}/Bedrock"
+          MetricName: CacheReadTokens
+          MetricValue: "$.cache_read_tokens"
+          Unit: Count
+          DefaultValue: 0
+
+  BedrockCacheWriteTokensMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref CapacityAgentLogGroup
+      FilterPattern: '{ $.event = "usage_tracking" }'
+      MetricTransformations:
+        - MetricNamespace: !Sub "${AWS::StackName}/Bedrock"
+          MetricName: CacheWriteTokens
+          MetricValue: "$.cache_write_tokens"
+          Unit: Count
+          DefaultValue: 0
+
+  BedrockSpendAlarm:
+    Type: AWS::CloudWatch::Alarm
+    DependsOn: BedrockTokenUsageMetricFilter
+    Properties:
+      AlarmName: !Sub "${AWS::StackName}-bedrock-spend"
+      AlarmDescription: >
+        Alarm when total Bedrock tokens (input + output, summed across all
+        invocations) in a 5-minute window exceeds BedrockTokenAlarmThreshold.
+        Catches runaway prompts, tool-call loops, and abusive callers before
+        the invoice arrives. Threshold is a parameter — tune based on your
+        expected steady-state usage.
+      Namespace: !Sub "${AWS::StackName}/Bedrock"
+      MetricName: TotalTokens
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: !Ref BedrockTokenAlarmThreshold
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !If [HasExternalAlarmTopic, !Ref AlarmNotificationTopicArn, !Ref AgentAlarmTopic]
+      OKActions:
+        - !If [HasExternalAlarmTopic, !Ref AlarmNotificationTopicArn, !Ref AgentAlarmTopic]
+
+Outputs:
+  ApiEndpoint:
+    Description: API Gateway endpoint URL for the capacity planning agent
+    Value: !Sub "https://${CapacityAgentApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/plan"
+  FunctionArn:
+    Description: Lambda function ARN
+    Value: !GetAtt CapacityAgentFunction.Arn
+  DLQArn:
+    Description: Dead Letter Queue ARN for failed invocations
+    Value: !GetAtt AgentDLQ.Arn
+  LogGroupName:
+    Description: CloudWatch Log Group for the Lambda function
+    Value: !Ref CapacityAgentLogGroup
+  SecretArn:
+    Description: Secrets Manager secret ARN for agent configuration
+    Value: !Ref AgentSecret
+  CacheTableName:
+    Description: DynamoDB table name for tool result caching
+    Value: !Ref ToolCacheTable
+  FunctionUrl:
+    Condition: FunctionUrlEnabled
+    Description: >
+      Lambda Function URL for long-running queries up to 180s. NOTE: this
+      endpoint is NOT fronted by WAF; the API Gateway endpoint is the
+      recommended perimeter for internet-exposed use. Callers must sign
+      with SigV4 (AuthType=AWS_IAM). Declared as a raw AWS::Lambda::Url
+      rather than SAM's FunctionUrlConfig — see comment on
+      CapacityAgentFunctionUrl for why.
+    Value: !GetAtt CapacityAgentFunctionUrl.FunctionUrl
