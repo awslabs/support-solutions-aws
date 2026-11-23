@@ -1,0 +1,19 @@
+{
+  "title": "Guidance for AI-Powered GPU Capacity Planning on AWS",
+  "persona": "ML infrastructure engineers, capacity planners and SREs, and engineering leads who run GPU inference and training on AWS and own the launch decision.",
+  "customer_pain_point": "Accelerated-compute (GPU) capacity is scarce and uneven across Regions, instance families, and time. Teams discover capacity risk too late, at the API call on launch day. Answering 'will the capacity be there?' means manually cross-checking disconnected signals (instance availability, service quotas, pricing, and the account's own capacity-error history). That is slow, varies by engineer, and leaves no auditable record of why a verdict landed where it did.",
+  "use_case_description": "Before committing to a launch, the customer gets a fast, consistent, and auditable read on GPU capacity risk for a specific ask (for example, N instances of a given instance type in a Region for a timeline). An AI agent hosted on Amazon Bedrock and running as an AWS Lambda function queries read-only AWS APIs, computes a deterministic confidence score and feasibility verdict, and recommends a capacity mitigation. It covers Amazon SageMaker AI and Amazon EC2 deployment patterns, single-account or cross-account.",
+  "workload_type": "GPU-based inference and training capacity risk assessment (decision support, not provisioning).",
+  "constraints": [
+    "Read-only: the agent assesses capacity and never provisions or changes account state.",
+    "Deterministic and auditable: the verdict is computed in code, not narrated by the model, so it is defensible weeks later.",
+    "Model-agnostic on Amazon Bedrock.",
+    "Multi-account via AWS STS AssumeRole with an ExternalId.",
+    "The output is a capacity signal, not a capacity guarantee."
+  ],
+  "requirements": [
+    "Return a confidence score, a feasibility verdict, and a recommended mitigation (Amazon EC2 Capacity Blocks for ML for short-term, SageMaker Flexible Training Plans for medium-term, or an On-Demand Capacity Reservation via the account team for long-term).",
+    "Operate across Amazon SageMaker AI and Amazon EC2 with the same query shape.",
+    "Produce a reproducible, defensible result suitable for a change review."
+  ]
+}

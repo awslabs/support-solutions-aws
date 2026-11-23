@@ -14,6 +14,7 @@ does, how to deploy it, and how to clean it up.
 | Solution | Description |
 |----------|-------------|
 | [Bedrock Production Readiness Advisor](AI-ML/bedrock-production-readiness-advisor/) | Assesses Amazon Bedrock workloads for production readiness across security, cost, quota, guardrails, observability, and architecture. |
+| [Guidance for AI-Powered GPU Capacity Planning on AWS](AI-ML/guidance-for-gpu-capacity-planning-on-aws/) | An Amazon Bedrock agent that assesses GPU capacity risk for inference and training on Amazon SageMaker AI and Amazon EC2, returning a deterministic confidence score, feasibility verdict, and capacity-mitigation recommendation from read-only AWS APIs. |
 | [HibernateAI](AI-ML/hibernate-ai/) | A read-only Amazon CloudWatch custom widget that uses Amazon Bedrock to analyze usage across 15+ AWS services and recommend idle non-production resources to hibernate for cost savings — advisory only, no mutating actions. |
 | [Well-Architected Review MCP Server for Amazon SageMaker](AI-ML/well-architected-review-mcp-server-for-sagemaker/) | Validates Amazon SageMaker workloads against the six AWS Well-Architected pillars using read-only APIs; returns prioritized findings with severities and recommendations. Runs locally in an IDE or hosted on Amazon Bedrock AgentCore. |
 

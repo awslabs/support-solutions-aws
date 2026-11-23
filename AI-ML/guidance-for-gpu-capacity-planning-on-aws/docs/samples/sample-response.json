@@ -1,0 +1,67 @@
+{
+  "request_id": "abc-123-def-456",
+  "answer": "## Capacity Risk Assessment\n\n### Signals Gathered\n- Instance offered in us-west-2 across 4 AZs\n- SageMaker Hosting pricing GA at $1.5152/hr\n- Quota 100 vs. requested 20 — 5x headroom\n- Spot Placement Score 9/10\n- Customer ICE history: 0 events in the last 30 days\n- No existing ODCRs\n\n### Verdict Narrative\nDEPLOYABLE — all signals clean.\n\n## Cost Projection\n- Hourly: $30.30\n- Monthly: $22,122\n- Annual: $265,464",
+  "tool_calls": 6,
+  "iterations": 4,
+  "stop_reason": "end_turn",
+  "incomplete": false,
+  "usage": {
+    "input_tokens": 4200,
+    "output_tokens": 1800,
+    "total_tokens": 6000,
+    "budget_limit": 80000
+  },
+  "tool_outcomes": {
+    "succeeded": [
+      "check_instance_availability",
+      "get_sagemaker_pricing",
+      "get_sagemaker_quota",
+      "get_spot_placement_score",
+      "get_ice_history",
+      "check_existing_odcrs"
+    ],
+    "failed": []
+  },
+  "confidence_assessments": [
+    {
+      "instance_type": "g5.2xlarge",
+      "region": "us-west-2",
+      "requested_count": 20,
+      "raw_signals_used": {
+        "instance_available": true,
+        "pricing_available": true,
+        "quota_limit": 100,
+        "requested_count": 20,
+        "spot_placement_score": 9,
+        "odcr_available_capacity": 0,
+        "customer_ice_events": 0,
+        "customer_ice_capacity_signal": "clean",
+        "customer_ice_deployment_target": "auto"
+      },
+      "confidence": {
+        "score": 0.97,
+        "label": "HIGH",
+        "verdict": "DEPLOYABLE",
+        "signals": {
+          "availability": 1.0,
+          "pricing": 1.0,
+          "quota": 1.0,
+          "spot_placement": 0.9,
+          "region_maturity": 1.0,
+          "ice_history_signal": 1.0,
+          "odcr_coverage": 0.0
+        },
+        "weights": {
+          "availability": 0.25,
+          "pricing": 0.15,
+          "quota": 0.25,
+          "spot_placement": 0.25,
+          "region_maturity": 0.1
+        },
+        "base_score": 0.975,
+        "applied_caps": []
+      }
+    }
+  ],
+  "disclaimer": "This response provides best-effort signals from public AWS APIs and the customer's own CloudTrail (where cross-account access is configured). It is NOT a capacity commitment from AWS. For strategic deployments, confirm capacity via AWS Support."
+}

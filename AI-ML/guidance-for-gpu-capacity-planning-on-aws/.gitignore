@@ -1,0 +1,30 @@
+.venv/
+venv/
+__pycache__/
+*.pyc
+.env
+*.log
+.DS_Store
+.idea/
+.vscode/
+dist/
+build/
+*.egg-info/
+
+# Test artifacts
+.coverage
+.hypothesis/
+.pytest_cache/
+htmlcov/
+
+# SAM build
+.aws-sam/
+
+# Local test cases (may contain account-specific information)
+test-cases/
+
+# Local design notes
+design/
+# IDE / assistant
+.claude/
+.kiro/
