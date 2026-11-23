@@ -865,8 +865,8 @@ def _classify_bedrock_error(exc: Exception) -> Optional[tuple[int, str, str]]:
     enumerate the Amazon-family (first-party, non-Marketplace) models
     on the current allowlist so callers get a concrete fallback list
     without needing to grep logs or read documentation. This failure
-    mode is common in Workshop Studio-vended sandboxes where
-    Marketplace subscriptions are SCP-blocked.
+    mode occurs in accounts where a service control policy (SCP)
+    blocks Marketplace subscriptions.
     """
     err_response = getattr(exc, "response", None)
     if not isinstance(err_response, dict):
@@ -893,8 +893,8 @@ def _classify_bedrock_error(exc: Exception) -> Optional[tuple[int, str, str]]:
                 f"Bedrock model access denied. {message} "
                 f"Likely cause: this model requires an AWS Marketplace "
                 f"subscription and the account doesn't permit it (common "
-                f"in Workshop Studio-vended sandboxes with SCP-level "
-                f"Marketplace restrictions). Try an Amazon-family model "
+                f"in accounts where a service control policy blocks "
+                f"Marketplace subscriptions). Try an Amazon-family model "
                 f"from the allowlist instead: {fallback}."
             )
             return 403, user_message, code

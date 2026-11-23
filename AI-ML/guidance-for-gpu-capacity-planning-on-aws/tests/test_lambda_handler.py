@@ -816,9 +816,9 @@ def test_usage_tracking_log_records_resolved_model(
 #      operator cost-attribution dashboards can see who-tried-what-and-
 #      failed, not just who-succeeded.
 #
-# Both guard against the Workshop Studio sandbox failure mode where
-# Anthropic Claude models return AccessDeniedException with a Marketplace
-# subscription message.
+# Both guard against the failure mode where a service control policy (SCP)
+# blocks Marketplace subscriptions, so Anthropic Claude models return
+# AccessDeniedException with a Marketplace subscription message.
 
 
 def _make_boto_client_error(code: str, message: str) -> Exception:
@@ -867,8 +867,8 @@ def test_bedrock_marketplace_access_denied_returns_403_with_hint(
     body = json.loads(response["body"])
     err = body["error"]
     assert "Marketplace" in err, f"error must mention Marketplace, got: {err!r}"
-    assert "sandbox" in err.lower(), (
-        f"error must call out the sandbox failure mode: {err!r}"
+    assert "service control policy" in err.lower(), (
+        f"error must call out the SCP Marketplace failure mode: {err!r}"
     )
     # Must list concrete Amazon-family fallbacks from the current allowlist.
     assert "us.amazon.nova-pro-v1:0" in err, (

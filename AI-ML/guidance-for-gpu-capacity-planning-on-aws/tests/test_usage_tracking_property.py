@@ -111,7 +111,7 @@ timestamp_st = st.datetimes(
 ISO_8601_UTC_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
 
 # Required fields in the usage tracking log.
-# A security review replaced the raw ``caller_id`` field
+# The raw ``caller_id`` field was replaced
 # with ``caller_id_hash`` + ``caller_type`` so log lines no longer leak
 # IAM ARNs / API key IDs to anyone with log-read access.
 REQUIRED_FIELDS = {

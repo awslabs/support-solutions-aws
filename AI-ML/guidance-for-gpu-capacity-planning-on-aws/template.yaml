@@ -126,8 +126,8 @@ Parameters:
         - Sonnet 4.5 — strongest tool-use reasoning ($3.30/$16.50 per M,
           cross-region), Anthropic. Escalation tier for complex queries.
         - Nova Pro — mid-tier Amazon-family ($0.80/$3.20 per M, no
-          cross-region premium). Useful when Anthropic Marketplace subs
-          are SCP-blocked (e.g., Workshop Studio-vended sandboxes).
+          cross-region premium). Useful when Anthropic Marketplace
+          subscriptions are blocked by a service control policy (SCP).
         - Nova Lite — cheap tier ($0.06/$0.24 per M). Fine for 1-2 tool
           lookups when the caller knows the ask is simple.
         - Nova Micro — cheapest ($0.035/$0.14 per M). Simple feasibility
@@ -437,8 +437,8 @@ Resources:
       # NOTE: for these logs to actually flow, the deploying account
       # must have API Gateway configured to push to CloudWatch Logs
       # (AWS::ApiGateway::Account with a service-linked role or
-      # equivalent). Workshop Studio-vended sandboxes typically already
-      # have this set at the account level; if not, the AccessLogSetting
+      # equivalent). Many accounts already have this set at the account
+      # level; if not, the AccessLogSetting
       # here is inert but harmless — the API still deploys successfully
       # and the /plan endpoint works.
       AccessLogSetting:
@@ -648,16 +648,12 @@ Resources:
               # to the customer trust-policy template shipped with
               # docs/implementation-guide.md.
               #
-              # SearchTrainingPlanOfferings is staged here for the
-              # workshop's "add one tool" lab
-              # (workshop/lab-add-one-tool.md —
-              # get_sagemaker_training_plan_offerings), the Tier 2
+              # SearchTrainingPlanOfferings supports the
+              # get_sagemaker_training_plan_offerings tool, the Tier 2
               # complement to the Tier 1 get_capacity_blocks_offerings
-              # tool. Attendees add the tool code in Module 5 without
-              # a template change. Safe to keep in a production deploy
-              # for the same reason the Capacity Blocks permission is:
-              # read-only and a natural piece of the three-tier
-              # mitigation ladder the agent reasons about.
+              # tool. It is read-only and a natural piece of the
+              # three-tier mitigation ladder the agent reasons about, so
+              # it is safe to keep in a production deploy.
               Effect: Allow
               Action:
                 - sagemaker:DescribeEndpointConfig
@@ -826,8 +822,7 @@ Resources:
   # Gateway's edge cache snapshots the stage with the OLD auth config.
   # Requests carrying the deployed API key get rejected with
   # ``ForbiddenException`` until the cache ages out.
-  # Verified on 2026-08-05 in a Workshop Studio-vended sandbox: the
-  # fix is a manual ``aws apigateway create-deployment --stage-name Prod``
+  # The fix is a manual ``aws apigateway create-deployment --stage-name Prod``
   # which forces the stage to re-snapshot and refresh the cache. This
   # custom resource automates that step so attendees never see the
   # transient 403.
@@ -893,8 +888,8 @@ Resources:
       Role: !GetAtt ApiDeploymentRefresherRole.Arn
       # Timeout: 180s covers the 90s propagation wait (see Code.ZipFile below)
       # plus margin for the ``apigateway:CreateDeployment`` call, the CFN
-      # response PUT, and Lambda init. Verified on 2026-10-21 that the fresh
-      # deployment needs 60-120s to settle on API Gateway's edge cache before
+      # response PUT, and Lambda init. The fresh deployment needs 60-120s to
+      # settle on API Gateway's edge cache before
       # requests stop 403ing. 90s wait + 15s margin + 60s misc = 165s under
       # the 180s ceiling.
       Timeout: 180
@@ -906,7 +901,7 @@ Resources:
       # and ``sam deploy`` fails with ``Specified
       # ReservedConcurrentExecutions ... decreases account's
       # UnreservedConcurrentExecution below its minimum value of [100]``.
-      # Observed in Workshop Studio-vended sandbox 2026-10-21. CFN
+      # This affects accounts with a small concurrent-execution pool. CFN
       # already serializes Custom Resource invocations across a single
       # stack lifecycle (one Create, zero-or-one Update, one Delete),
       # so there's no concurrent-invocation storm this reservation
@@ -934,10 +929,9 @@ Resources:
           query. We sleep inside the Lambda so CFN waits with us —
           attendees never see the 403.
 
-          Verified in a Workshop Studio-vended sandbox on 2026-10-21:
-          without the sleep, a query ~5 seconds after CREATE_COMPLETE
-          returned {"message":"Forbidden"}; the same query after a
-          120s wait returned a full agent response. The 90s sleep below
+          Without the sleep, a query a few seconds after CREATE_COMPLETE
+          returns {"message":"Forbidden"}; the same query after a 120s
+          wait returns a full agent response. The 90s sleep below
           picks a value conservatively above the observed propagation
           window while staying under the Lambda Timeout (180s).
           """

@@ -144,7 +144,7 @@ class TestAssumeRole:
         mock_session_ctor.return_value = "session-instance"
 
         result = assume_role(
-            "arn:aws:iam::111122223333:role/CustomerAgentRole",
+            "arn:aws:iam::123456789012:role/CustomerAgentRole",
             "planner-session",
         )
 
@@ -153,7 +153,7 @@ class TestAssumeRole:
         mock_sts.assume_role.assert_called_once()
         call_kwargs = mock_sts.assume_role.call_args[1]
         assert (
-            call_kwargs["RoleArn"] == "arn:aws:iam::111122223333:role/CustomerAgentRole"
+            call_kwargs["RoleArn"] == "arn:aws:iam::123456789012:role/CustomerAgentRole"
         )
         assert call_kwargs["RoleSessionName"] == "planner-session"
         assert call_kwargs["DurationSeconds"] == 900
@@ -181,7 +181,7 @@ class TestAssumeRole:
         }
 
         assume_role(
-            "arn:aws:iam::111122223333:role/CustomerAgentRole",
+            "arn:aws:iam::123456789012:role/CustomerAgentRole",
             "planner-session",
             external_id="shared-secret-abc",
         )
@@ -202,7 +202,7 @@ class TestAssumeRole:
             }
         }
 
-        assume_role("arn:aws:iam::111122223333:role/X", "n", duration_seconds=60)
+        assume_role("arn:aws:iam::123456789012:role/X", "n", duration_seconds=60)
 
         call_kwargs = mock_sts.assume_role.call_args[1]
         # Minimum allowed by STS is 900
@@ -221,7 +221,7 @@ class TestAssumeRole:
             }
         }
 
-        assume_role("arn:aws:iam::111122223333:role/X", "n", duration_seconds=100000)
+        assume_role("arn:aws:iam::123456789012:role/X", "n", duration_seconds=100000)
 
         call_kwargs = mock_sts.assume_role.call_args[1]
         # Maximum allowed by STS is 43200
@@ -239,7 +239,7 @@ class TestAssumeRole:
         )
 
         with pytest.raises(ClientError):
-            assume_role("arn:aws:iam::111122223333:role/X", "n")
+            assume_role("arn:aws:iam::123456789012:role/X", "n")
 
 
 class TestBotocoreRetryConfig:

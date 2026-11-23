@@ -1,5 +1,5 @@
-# Pinned to specific versions to close a supply-chain gap flagged in a
-# security review. The previous `>=1.34.0` floor let any
+# Pinned to specific versions to close a supply-chain gap. The previous
+# `>=1.34.0` floor let any
 # fresh deploy pull the current PyPI HEAD at build time.
 #
 # When upgrading:

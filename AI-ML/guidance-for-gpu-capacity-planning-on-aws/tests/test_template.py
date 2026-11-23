@@ -796,13 +796,13 @@ class TestApiDeploymentRefresher:
         """The custom resource MUST NOT set ReservedConcurrentExecutions.
 
         Reasoning: AWS Lambda enforces a minimum-unreserved-concurrency
-        of 100 per account. Vended sandbox accounts commonly have
+        of 100 per account. Concurrency-constrained accounts commonly have
         ~110 units of regional concurrency, 10 of which the agent
         Lambda already reserves (via the stack's ``ReservedConcurrency``
         parameter default). Adding even ``ReservedConcurrentExecutions: 1``
         on the refresher drops unreserved below the 100 floor and
-        ``sam deploy`` fails with InvalidRequest. Observed in a
-        Workshop Studio vended sandbox on 2026-10-21.
+        ``sam deploy`` fails with InvalidRequest. This affects accounts
+        with a small concurrent-execution pool.
 
         We don't need the protection anyway: CloudFormation serializes
         Custom Resource invocations across a single stack lifecycle, so
@@ -816,7 +816,7 @@ class TestApiDeploymentRefresher:
             f"ApiDeploymentRefresherFunction must NOT set "
             f"ReservedConcurrentExecutions (got {rc!r}). See docstring "
             f"for why — if a future refactor adds it back, deploys to "
-            f"concurrency-constrained accounts (Workshop Studio sandbox) "
+            f"concurrency-constrained accounts "
             f"will fail at CFN time."
         )
 
@@ -827,7 +827,7 @@ class TestApiDeploymentRefresher:
         high enough to cover that sleep plus margin for the
         ``apigateway:CreateDeployment`` call and the CFN response PUT.
 
-        Observed on 2026-10-21: propagation needs 60-120 seconds. We
+        Propagation needs 60-120 seconds. We
         sleep 90s. Timeout should be at least 120s to leave margin;
         180s is what we ship.
         """

@@ -39,7 +39,7 @@ Output: Confidence: VERY LOW (<0.3)
 7. AWS Lambda computes a deterministic confidence score from the raw tool outputs and returns the structured decision package (verdict, signal table, cost projection, alternatives, and recommended capacity mitigations) through Amazon API Gateway.
 8. AWS Lambda publishes invocation logs and metrics to Amazon CloudWatch, which backs the operational dashboard and alarms. A failed invocation goes to an Amazon Simple Queue Service (Amazon SQS) dead-letter queue, and a CloudWatch alarm notifies an encrypted Amazon Simple Notification Service (Amazon SNS) topic.
 
-**Diagram sources:** the authoritative diagram is the official Guidance reference-architecture template (`docs/architecture/guidance-architecture.pptx`, to be added), rendered to `assets/images/guidance-architecture.png`. The diagram-as-code draft is [`docs/architecture/architecture-draft.dac.yaml`](docs/architecture/architecture-draft.dac.yaml) (render with `awsdac`), and the numbered callouts are in [`docs/architecture/architecture-steps.md`](docs/architecture/architecture-steps.md).
+**Diagram sources:** the rendered architecture diagram is [`assets/images/guidance-architecture.png`](assets/images/guidance-architecture.png). The editable diagram-as-code source is [`docs/architecture/architecture-draft.dac.yaml`](docs/architecture/architecture-draft.dac.yaml) (render with `awsdac`), and the numbered callouts are in [`docs/architecture/architecture-steps.md`](docs/architecture/architecture-steps.md).
 
 ## Tools (all public AWS APIs)
 
@@ -127,7 +127,7 @@ Rates below are on-demand pricing as of Jul 2026. Actual monthly cost depends on
 
 **Only Haiku 4.5 is verified-in-sandbox** at an estimated ~$52/mo. The Nova tier figures are projected from Bedrock on-demand pricing, the per-request allowlist pattern makes them available without redeploy if a caller wants to self-select a cheaper tier. Expect Nova Lite / Micro to spiral on complex multi-tool queries; they're best positioned as **per-query downgrades** for callers who know their ask is simple, not as the stack default.
 
-Haiku 4.5 at an estimated ~$52/mo is the recommended steady state. Sonnet 4.5 is available as a per-query escalation. Nova Pro / Lite / Micro live on the allowlist as per-query downgrades for cost-sensitive asks and as fallbacks for Workshop Studio-vended sandboxes that block Anthropic Marketplace subscriptions.
+Haiku 4.5 at an estimated ~$52/mo is the recommended steady state. Sonnet 4.5 is available as a per-query escalation. Nova Pro / Lite / Micro live on the allowlist as per-query downgrades for cost-sensitive asks and as fallbacks for accounts where a service control policy blocks Anthropic Marketplace subscriptions.
 
 ### When to escalate to Sonnet 4.5
 
@@ -335,7 +335,7 @@ The Lambda execution role is created automatically by the SAM template. This is 
 **Notes:**
 - Bedrock, EC2 read, CloudTrail read, Pricing, and Service Quotas actions cannot be scoped to specific resources (AWS API limitation). Secrets Manager and DynamoDB are scoped to the stack-managed resources.
 - The BedrockGuardrailApply and AssumeCustomerRole statements are conditional, they only exist in the deployed role when the corresponding parameter is set.
-- The Bedrock wildcard resource lets the Lambda invoke any model; if your security review requires tighter scope, override it in a stack update, see [docs/implementation-guide.md § IAM Setup](docs/implementation-guide.md#iam-setup) for the pattern.
+- The Bedrock wildcard resource lets the Lambda invoke any model; if you need tighter scope, override it in a stack update, see [docs/implementation-guide.md § IAM Setup](docs/implementation-guide.md#iam-setup) for the pattern.
 
 ## Well-Architected alignment
 
@@ -446,7 +446,7 @@ make test
 make ci
 
 # Run integration tests against a deployed endpoint
-INTEGRATION_TEST_URL=https://xxx.execute-api.us-west-2.amazonaws.com/Prod/plan \
+INTEGRATION_TEST_URL=https://<api-id>.execute-api.us-west-2.amazonaws.com/Prod/plan \
   pytest tests/test_integration.py -m integration -v
 
 # Format and lint

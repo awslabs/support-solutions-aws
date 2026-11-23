@@ -106,7 +106,7 @@ class TestTenantScopedCacheKey:
     def test_different_customer_accounts_produce_different_keys(self):
         params = {"instance_type": "g5.2xlarge", "region": "us-east-1"}
         key_a = ToolCache._make_key("get_ice_history", params, "111111111111")
-        key_b = ToolCache._make_key("get_ice_history", params, "222222222222")
+        key_b = ToolCache._make_key("get_ice_history", params, "123456789012")
         assert key_a != key_b
 
     def test_deploy_account_and_customer_account_isolated(self):
@@ -153,7 +153,7 @@ class TestTenantScopedCacheKey:
         mock_table.get_item.side_effect = fake_get
 
         cache_a = ToolCache("t", ttl_seconds=300, tenant_scope="111111111111")
-        cache_b = ToolCache("t", ttl_seconds=300, tenant_scope="222222222222")
+        cache_b = ToolCache("t", ttl_seconds=300, tenant_scope="123456789012")
 
         params = {"instance_type": "g5.2xlarge", "region": "us-east-1"}
         cache_a.put("get_ice_history", params, {"event_count": 42})

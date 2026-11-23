@@ -28,9 +28,3 @@ design/
 # IDE / assistant
 .claude/
 .kiro/
-# Workshop bundle staging (obsolete now that we push via git)
-workshop-build-*.zip
-
-# Workshop Studio asset bundle (built from workshop/pack-guidance.sh,
-# uploaded to s3://ws-assets-us-east-1/9e6e5f29-.../ — see script header)
-guidance-for-gpu-capacity-planning-on-aws.zip

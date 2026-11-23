@@ -689,7 +689,7 @@ class TestBodySizeValidationBoundary:
 
 # Strategy for blocked patterns (the exact list from the handler).
 # Keep this list IN SYNC with ``src/lambda_handler.py``'s BLOCKED_PATTERNS.
-# A security review expanded this from 7 to 16 patterns.
+# This list was expanded from 7 to 16 patterns.
 BLOCKED_PATTERNS = [
     "ignore previous",
     "ignore all instructions",

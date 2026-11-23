@@ -23,13 +23,12 @@
 #   2. Configures the account-wide API Gateway CloudWatch Logs role
 #      (required by AccessLogSetting on the deployed API)
 #   3. Enables Bedrock model access for the configured model
-#   4. Clones the guidance repository (skipped if invoked from a clone)
-#   5. Runs sam build + sam deploy with the workshop-tuned parameters
-#   6. Prints stack outputs (API endpoint, Function URL, API key, etc.)
+#   4. Runs sam build + sam deploy from this directory, with tuned parameters
+#   5. Prints stack outputs (API endpoint, Function URL, API key, etc.)
 #
 # Static parameters are declared at the top of the script. Adjust
-# them there rather than exporting overrides at runtime — the SLIB
-# validation environment does not pass runtime arguments.
+# them there rather than exporting overrides at runtime — the Solutions
+# Library validation environment does not pass runtime arguments.
 #
 # Cleanup:
 #   ./deployment/cleanup.sh $STACK_NAME
@@ -47,15 +46,14 @@ export AWS_REGION="us-east-1"
 # $5/M output (4-5x cheaper than Sonnet 4.5). Callers can escalate a
 # hard query to Sonnet 4.5 or Nova Pro per request via the ``model_id``
 # field in the request body; see ``AllowedBedrockModelIds`` in
-# template.yaml for the allowlist. Fresh AWS accounts (e.g. the SLIB
-# validation environment) can invoke Claude without the Marketplace
-# subscription block that Workshop Studio-vended sandboxes have at
-# the SCP level.
+# template.yaml for the allowlist. Fresh AWS accounts can invoke
+# Claude without the Marketplace subscription block that some accounts
+# enforce at the service control policy (SCP) level.
 BEDROCK_MODEL_ID="us.anthropic.claude-haiku-4-5-20251001-v1:0"
 BEDROCK_REGION="us-east-1"
 
 # Stack name. Timestamp suffix keeps re-runs from colliding with prior
-# state and matches the SLIB dynamic-resource-name requirement.
+# state and matches the Solutions Library dynamic-resource-name requirement.
 STACK_NAME_BASE="gpu-capacity-agent"
 DATE_TAG=$(date -u +%Y%m%d%H%M%S)
 STACK_NAME="${STACK_NAME_BASE}-${DATE_TAG}"
@@ -66,12 +64,6 @@ AUTH_METHOD="API_KEY"
 ENABLE_FUNCTION_URL="true"
 RESERVED_CONCURRENCY="10"
 WAF_RATE_LIMIT="100"
-
-# Guidance repository. When SLIB accepts the submission, the code
-# lands under the aws-solutions-library-samples GitHub org and this
-# script is expected to be able to clone from there.
-REPO_URL="https://github.com/aws-solutions-library-samples/guidance-for-gpu-capacity-planning-on-aws.git"
-REPO_DIR="guidance-for-gpu-capacity-planning-on-aws"
 
 # IAM role name for the account-wide API Gateway CloudWatch Logs
 # setting. Reused across every deploy of this guidance in the
@@ -134,25 +126,19 @@ sleep 30
 # Step 2: Install prerequisites not preinstalled on AL2023
 # =============================================================================
 echo "==> Installing SAM CLI and Python dependencies"
-# python3, pip, git, aws CLI, jq, and unzip are already in the SLIB
+# python3, pip, git, aws CLI, jq, and unzip are already in the
 # CodeBuild AL2023 image. SAM CLI is not.
 pip install --quiet --upgrade aws-sam-cli boto3
 
 # =============================================================================
-# Step 3: Clone the repository (idempotent — remove any prior copy)
+# Step 3: Verify the script runs from the guidance repository root
 # =============================================================================
-# When run from an existing clone (a developer workstation), the
-# script would clone into a nested directory. The SLIB validator
-# always starts from a clean CodeBuild scratch directory, so this
-# clone is the expected first fetch of the code.
-if [ -d "$REPO_DIR" ]; then
-    echo "==> Removing prior clone at $REPO_DIR"
-    rm -rf "$REPO_DIR"
+# This script deploys from the current checkout. Run it from the root of the
+# guidance directory (the one that contains template.yaml).
+if [ ! -f "template.yaml" ]; then
+    echo "ERROR: run this script from the guidance repository root (template.yaml not found)." >&2
+    exit 1
 fi
-
-echo "==> Cloning guidance repository"
-git clone --depth 1 "$REPO_URL" "$REPO_DIR"
-cd "$REPO_DIR"
 
 # =============================================================================
 # Step 4: Enable Bedrock model access for the configured model
@@ -160,8 +146,8 @@ cd "$REPO_DIR"
 # In a fresh AWS account, the first Bedrock InvokeModel/Converse call
 # triggers an automatic subscription (Marketplace-listed models like
 # Anthropic Claude require aws-marketplace:Subscribe permissions,
-# which AdministratorAccess includes). The SLIB validation
-# environment has those permissions. Making a one-shot Converse call
+# which AdministratorAccess includes). An admin-level deploy role
+# has those permissions. Making a one-shot Converse call
 # here fails fast if model access is blocked by the target account's
 # guardrails.
 echo "==> Testing Bedrock model access ($BEDROCK_MODEL_ID)"
@@ -177,7 +163,7 @@ else
     echo "    The stack will deploy but the Lambda will return 500 at runtime"
     echo "    until model access is granted. In fresh AWS accounts this is"
     echo "    usually granted automatically on first invocation; on locked-"
-    echo "    down accounts (e.g. Workshop Studio vended sandboxes) it may"
+    echo "    down accounts (where an SCP blocks Marketplace subscriptions) it may"
     echo "    require an alternate model (see docs/implementation-guide.md)."
 fi
 

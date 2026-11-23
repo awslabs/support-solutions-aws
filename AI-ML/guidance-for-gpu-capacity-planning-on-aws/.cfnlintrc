@@ -10,8 +10,7 @@
 # and reports ``AuthType is required``. ``sam validate`` without
 # ``--lint`` confirms the template is structurally valid.
 #
-# Verified 2026-07-10 during pre-launch hardening. Do not remove this
-# suppression without first restructuring the
+# Do not remove this suppression without first restructuring the
 # Function URL wiring so ``AuthType`` is a top-level, unconditional
 # property.
 

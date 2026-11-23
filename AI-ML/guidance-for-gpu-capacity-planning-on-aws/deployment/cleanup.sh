@@ -9,8 +9,8 @@
 #   ./deployment/cleanup.sh [STACK_NAME]
 #
 # STACK_NAME defaults to the environment variable STACK_NAME if set,
-# otherwise gpu-capacity-agent. When invoked without a name in the SLIB
-# validation environment, the caller is expected to export
+# otherwise gpu-capacity-agent. When invoked without a name in an
+# automated validation environment, the caller is expected to export
 # STACK_NAME to the name deploy.sh created.
 #
 # What this script does:

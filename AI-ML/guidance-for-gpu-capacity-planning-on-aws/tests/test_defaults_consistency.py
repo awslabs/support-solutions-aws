@@ -33,8 +33,8 @@ EXPECTED_BEDROCK_REGION = "us-west-2"
 # default:
 #   - Haiku 4.5 — balanced default, Anthropic
 #   - Sonnet 4.5 — strongest tool-use reasoning, Anthropic
-#   - Nova Pro — Amazon-family fallback (Workshop Studio-vended sandboxes
-#     block Anthropic Marketplace subs at the SCP level)
+#   - Nova Pro — Amazon-family fallback (for accounts where an SCP blocks
+#     Anthropic Marketplace subscriptions)
 #   - Nova Lite — cheap tier for 1-2 tool lookups
 #   - Nova Micro — cheapest, simple feasibility checks only
 EXPECTED_ALLOWED_MODEL_IDS = (

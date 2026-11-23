@@ -42,7 +42,7 @@ format: ## Auto-format code
 
 validate: ## Validate SAM template
 	# sam validate + cfn-lint. E3003 suppression lives in .cfnlintrc
-	# (with a documented reason), verified in a security review.
+	# (with a documented reason).
 	sam validate --lint
 
 diagram: ## Render the architecture diagram-as-code draft to PNG (requires awsdac: brew install awsdac)

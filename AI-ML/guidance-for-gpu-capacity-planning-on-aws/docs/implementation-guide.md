@@ -81,8 +81,8 @@ Deploy with the AWS SAM CLI (recommended) or run the agent locally for developme
 
 ```bash
 # Clone the repository
-git clone https://github.com/aws-solutions-library-samples/guidance-for-gpu-capacity-planning-on-aws.git
-cd guidance-for-gpu-capacity-planning-on-aws
+git clone https://github.com/awslabs/support-solutions-aws.git
+cd support-solutions-aws/AI-ML/guidance-for-gpu-capacity-planning-on-aws
 
 # Build and deploy
 make build
@@ -386,7 +386,7 @@ A live, interactive version of this estimate for the Haiku 4.5 default is publis
 |----------|--------------------|--------------------|-------------------|----------|
 | `us.anthropic.claude-haiku-4-5-20251001-v1:0` **(default)** | $1.10 / $5.50 | ~$35 / mo | **~$52 / mo** | Everyday queries, quick 1-2 tool lookups, cost-conscious deployments, workshops. Fastest tool-loop latency in the current Anthropic generation. |
 | `us.anthropic.claude-sonnet-4-5-20250929-v1:0` | $3.30 / $16.50 | ~$105 / mo | ~$121 / mo | Adversarial multi-region asks, tricky pricing arithmetic (PPA / EDP / SP tiers), 100+ instance fleets across ≥ 5 regions, escalations already flagged HIGH RISK by Haiku. |
-| `us.amazon.nova-pro-v1:0` | $0.80 / $3.20 | ~$22 / mo | ~$39 / mo | Workshop Studio-vended sandboxes (Marketplace subs blocked at SCP level), Amazon-family preference, workloads with an Amazon-owned-only compliance clause. |
+| `us.amazon.nova-pro-v1:0` | $0.80 / $3.20 | ~$22 / mo | ~$39 / mo | Accounts where a service control policy blocks Bedrock Marketplace models, Amazon-family preference, workloads with an Amazon-owned-only compliance clause. |
 | `us.amazon.nova-lite-v1:0` | $0.06 / $0.24 | ~$2 / mo | ~$19 / mo | 1-2 tool lookups when the caller knows the ask is simple. Expect weaker multi-tool reasoning than Nova Pro. |
 | `us.amazon.nova-micro-v1:0` | $0.035 / $0.14 | ~$1 / mo | ~$18 / mo | Simple feasibility checks only, "is p4d.24xlarge available in us-east-1?" level. Weakest tool-use reasoning on the allowlist. |
 | `us.anthropic.claude-opus-4-5-20250929-v1:0` (add-on) | $5.50 / $27.50 | ~$175 / mo | ~$191 / mo | Very rare: 5+ region asks with conflicting residency AND regulatory constraints. Almost always Sonnet is enough. Add to the allowlist only if you have documented cases. |
@@ -399,7 +399,7 @@ Consult the [Bedrock pricing page](https://aws.amazon.com/bedrock/pricing/) for 
 
 - **Start with Haiku 4.5 as the default.** ~90% of capacity questions are 1-2 tool calls and Haiku handles them at $0.005-$0.02 per query.
 - **Escalate to Sonnet 4.5 per query** (via the `model_id` request field) when: the ask spans 4+ regions, the customer has multi-tier negotiated pricing, cross-partition (commercial ↔ GovCloud / China) concerns come up, or a Haiku response returned HIGH RISK / NOT FEASIBLE and the customer needs a deeper second look.
-- **Include Nova Pro on the allowlist** if any of your deployments live in Workshop Studio sandboxes or an environment where Anthropic Marketplace subscriptions are SCP-blocked. It's a working escape hatch that doesn't require redeploying.
+- **Include Nova Pro on the allowlist** if any of your deployments run where a service control policy (SCP) blocks Anthropic Marketplace subscriptions. It's a working escape hatch that doesn't require redeploying.
 - **Add Opus 4.5 only if you have a documented pattern** of asks Sonnet mis-scores. Empirically, the deterministic `confidence_assessments[]` block corrects most model wobble at the scorer, not the model.
 
 #### Runtime model routing pattern
@@ -842,7 +842,7 @@ curl -X POST "$API_URL" \
   -d '{
         "query": "Is 200 g5.2xlarge feasible in us-east-1?",
         "customer_context": {
-          "role_arn": "arn:aws:iam::111122223333:role/CapacityAgentReadOnly",
+          "role_arn": "arn:aws:iam::123456789012:role/CapacityAgentReadOnly",
           "external_id": "acme-2026-Q3",
           "session_name": "capacity-planner-session"
         }

@@ -2,10 +2,9 @@
 
 > **Disclaimer:** This is sample code, for non-production usage. You should work with your security and legal teams to meet your organizational security, regulatory, and compliance requirements before deployment.
 
-The reference architecture is `guidance-architecture.pptx` (built on the official Guidance
-reference-architecture template) with a rendered copy in `assets/images/guidance-architecture.png`.
-The `architecture-draft.dac.yaml` file is an AWS Diagram-as-Code draft used while iterating on the
-layout.
+The rendered reference architecture is `assets/images/guidance-architecture.png`. The
+`architecture-draft.dac.yaml` file is the editable AWS Diagram-as-Code source, which you render with
+`awsdac`.
 
 ## Steps as they appear on the slide
 

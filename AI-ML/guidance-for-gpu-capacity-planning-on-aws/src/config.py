@@ -32,8 +32,8 @@ BEDROCK_MODEL_ID = os.environ.get(
 #   - Sonnet 4.5 — strongest tool-use reasoning ($3.30/$16.50 per M,
 #     cross-region), Anthropic. Escalation tier for complex queries.
 #   - Nova Pro — mid-tier Amazon-family model ($0.80/$3.20 per M, no
-#     cross-region premium). Useful in Workshop Studio sandboxes where
-#     Anthropic Marketplace subscriptions are SCP-blocked.
+#     cross-region premium). Useful where a service control policy (SCP)
+#     blocks Anthropic Marketplace subscriptions.
 #   - Nova Lite — cheap tier ($0.06/$0.24 per M). Fine for 1-2 tool
 #     lookups when the caller knows the ask is simple.
 #   - Nova Micro — cheapest ($0.035/$0.14 per M). Simple feasibility
